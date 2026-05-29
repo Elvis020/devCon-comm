@@ -38,7 +38,6 @@ const mergeForm = reactive({
   secretAnswer: '',
 });
 
-const topThree = computed(() => leaderboard.value.slice(0, 3));
 const title = computed(() => leaderboardMode.value === 'monthly' ? 'This Month' : 'All-Time Leaderboard');
 const pageCount = computed(() => Math.max(1, Math.ceil(leaderboard.value.length / pageSize)));
 const paginatedLeaderboard = computed(() => leaderboard.value.slice((page.value - 1) * pageSize, page.value * pageSize));
@@ -154,12 +153,6 @@ function rankLabel(rank: number): string {
   return `#${rank}`;
 }
 
-function topThreeLabel(rank: number): string {
-  if (rank === 1) return 'Leader';
-  if (rank === 2) return 'Second';
-  return 'Third';
-}
-
 onMounted(async () => {
   await fetchData();
   const scrollArea = document.querySelector('main');
@@ -189,40 +182,21 @@ onUnmounted(() => {
           class="z-30 -mx-4 mb-8 border-b border-dc-yellow/10 bg-[#090908]/95 px-4 py-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
           :class="keepModeSwitcherSticky ? 'sticky top-0' : 'relative'"
         >
-          <div class="grid gap-4 lg:grid-cols-[auto_1fr] lg:items-center">
-            <div class="flex flex-wrap gap-3">
-              <button
-                class="rounded-md border px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide transition-colors"
-                :class="leaderboardMode === 'all-time' ? 'border-dc-yellow bg-dc-yellow text-dc-dark' : 'border-dc-yellow/20 text-dc-gray-light hover:border-dc-yellow/50 hover:text-white'"
-                @click="setMode('all-time')"
-              >
-                All Time
-              </button>
-              <button
-                class="rounded-md border px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide transition-colors"
-                :class="leaderboardMode === 'monthly' ? 'border-dc-yellow bg-dc-yellow text-dc-dark' : 'border-dc-yellow/20 text-dc-gray-light hover:border-dc-yellow/50 hover:text-white'"
-                @click="setMode('monthly')"
-              >
-                This Month
-              </button>
-            </div>
-
-            <div v-if="topThree.length === 3 && !loading" class="grid gap-2 sm:grid-cols-3">
-              <div
-                v-for="entry in topThree"
-                :key="entry.user_id ?? entry.rank"
-                class="rounded-md border px-3 py-2"
-                :class="entry.rank === 1 ? 'border-dc-yellow/35 bg-dc-yellow/[0.08]' : 'border-dc-yellow/10 bg-dc-yellow/[0.03]'"
-              >
-                <div class="flex items-center justify-between gap-3">
-                  <div class="min-w-0">
-                    <p class="font-mono text-[10px] font-bold uppercase tracking-wide text-dc-gray-light">{{ topThreeLabel(entry.rank) }}</p>
-                    <p class="truncate text-sm font-bold text-white">{{ entry.nickname }}</p>
-                  </div>
-                  <p class="shrink-0 font-mono text-lg font-bold" :class="entry.rank === 1 ? 'text-dc-yellow' : 'text-white'">{{ entry.total_score }}</p>
-                </div>
-              </div>
-            </div>
+          <div class="flex flex-wrap gap-3">
+            <button
+              class="rounded-md border px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide transition-colors"
+              :class="leaderboardMode === 'all-time' ? 'border-dc-yellow bg-dc-yellow text-dc-dark' : 'border-dc-yellow/20 text-dc-gray-light hover:border-dc-yellow/50 hover:text-white'"
+              @click="setMode('all-time')"
+            >
+              All Time
+            </button>
+            <button
+              class="rounded-md border px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide transition-colors"
+              :class="leaderboardMode === 'monthly' ? 'border-dc-yellow bg-dc-yellow text-dc-dark' : 'border-dc-yellow/20 text-dc-gray-light hover:border-dc-yellow/50 hover:text-white'"
+              @click="setMode('monthly')"
+            >
+              This Month
+            </button>
           </div>
         </div>
 
