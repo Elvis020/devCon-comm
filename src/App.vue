@@ -57,7 +57,7 @@ async function logout() {
 
 <template>
   <div class="flex h-screen flex-col overflow-hidden bg-dc-dark text-white">
-    <header class="sticky top-0 z-50 border-b border-dc-yellow/30 bg-dc-dark/95 backdrop-blur-sm">
+    <header class="sticky top-0 z-50 border-b border-dc-yellow/15 bg-[#090908]/95 backdrop-blur-sm">
       <div class="mx-auto flex min-h-16 max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between gap-4">
           <RouterLink to="/" class="group flex items-center font-mono text-xl font-bold tracking-tight">
@@ -68,12 +68,12 @@ async function logout() {
           </RouterLink>
 
           <div class="hidden items-center gap-2 md:flex">
-            <span class="border border-dc-yellow/20 px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-dc-gray-light">
+            <span class="rounded-md border border-dc-yellow/15 bg-dc-yellow/[0.03] px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-dc-gray-light">
               {{ isAdminRoute ? 'Organizer' : 'Community' }}
             </span>
             <button
               v-if="isAdminRoute && route.path !== '/admin/login'"
-              class="border border-dc-yellow/20 px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-dc-gray-light transition-colors hover:border-dc-yellow/50 hover:text-white"
+              class="rounded-md border border-dc-yellow/15 bg-dc-yellow/[0.03] px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-dc-gray-light transition-colors hover:border-dc-yellow/40 hover:text-white"
               @click="logout"
             >
               Sign Out
@@ -86,7 +86,7 @@ async function logout() {
             v-for="link in primaryLinks"
             :key="link.href"
             :to="link.href"
-            class="shrink-0 border px-3 py-2 transition-all"
+            class="shrink-0 rounded-md border px-3 py-2 transition-all"
             :class="linkClass(link)"
           >
             {{ link.label }}
@@ -98,7 +98,7 @@ async function logout() {
             v-for="link in speakerLinks"
             :key="link.href"
             :to="link.href"
-            class="shrink-0 border px-3 py-2 transition-all"
+            class="shrink-0 rounded-md border px-3 py-2 transition-all"
             :class="linkClass(link)"
           >
             {{ link.label }}
@@ -108,7 +108,7 @@ async function logout() {
             v-for="link in playLinks"
             :key="link.href"
             :to="link.href"
-            class="shrink-0 border px-3 py-2 transition-all"
+            class="shrink-0 rounded-md border px-3 py-2 transition-all"
             :class="linkClass(link)"
           >
             {{ link.label }}

@@ -50,38 +50,41 @@ onMounted(fetchEvent);
         <AdminEventTabs :event-id="event.id" />
         <p v-if="event.description" class="mb-8 text-white/80">{{ event.description }}</p>
 
-        <section class="editorial-panel relative mb-8 overflow-hidden p-6">
-          <div class="absolute right-0 top-0 size-16 border-b-2 border-l-2 border-dc-yellow/20" />
-          <h2 class="mb-4 flex items-center gap-3 font-mono text-xl font-bold text-white"><span class="text-dc-yellow">$</span> EVENT_STATUS</h2>
-          <div class="mb-4 flex flex-wrap gap-2">
+        <section class="editorial-panel mb-10 p-6 sm:p-7">
+          <div class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p class="editorial-eyebrow mb-2">status</p>
+              <h2 class="text-2xl font-black tracking-tight text-white">Event Status</h2>
+            </div>
+            <p class="font-mono text-xs uppercase tracking-wide text-dc-gray">
+              Current: <span class="font-bold text-dc-yellow">{{ event.status.replace('_', ' ') }}</span>
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-2">
             <button
               v-for="status in statusFlow"
               :key="status"
-              class="px-4 py-2 font-mono text-sm font-bold uppercase transition-all"
-              :class="event.status === status ? 'bg-dc-yellow text-dc-dark shadow-glow' : 'border-2 border-dc-dark-3 bg-dc-dark-2 text-white hover:border-dc-yellow/50'"
+              class="rounded-md px-4 py-2 font-mono text-sm font-bold uppercase transition-all"
+              :class="event.status === status ? 'bg-dc-yellow text-dc-dark shadow-[0_12px_30px_rgba(249,225,94,0.18)]' : 'border border-dc-yellow/10 bg-dc-yellow/[0.03] text-dc-gray-light hover:border-dc-yellow/35 hover:bg-dc-yellow/[0.06] hover:text-white'"
               @click="updateStatus(status)"
             >
               {{ status.replace('_', ' ') }}
             </button>
           </div>
-          <p class="font-mono text-sm text-dc-gray">CURRENT: <span class="font-bold uppercase text-dc-yellow">{{ event.status.replace('_', ' ') }}</span></p>
         </section>
 
         <h2 class="mb-4 text-2xl font-black tracking-tight text-white">Quick Actions</h2>
         <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <RouterLink :to="`/admin/events/${event.id}/talks`" class="group relative block overflow-hidden border-2 border-dc-dark-3 bg-dc-dark-1 p-6 transition-all hover:border-dc-yellow/50">
-            <div class="absolute right-0 top-0 size-12 border-b-2 border-l-2 border-dc-yellow/10 transition-colors group-hover:border-dc-yellow/30" />
-            <h3 class="mb-2 font-mono text-lg font-bold text-white transition-colors group-hover:text-dc-yellow">MANAGE TALKS</h3>
+          <RouterLink :to="`/admin/events/${event.id}/talks`" class="editorial-panel group block p-6 transition-all hover:-translate-y-0.5 hover:border-dc-yellow/30 hover:bg-[#191917]">
+            <h3 class="mb-2 text-lg font-black tracking-tight text-white transition-colors group-hover:text-dc-yellow">Manage Talks</h3>
             <p class="text-sm text-dc-gray-light">Review CFP submissions and manage talks</p>
           </RouterLink>
-          <RouterLink :to="`/admin/events/${event.id}/speakers`" class="group relative block overflow-hidden border-2 border-dc-dark-3 bg-dc-dark-1 p-6 transition-all hover:border-dc-yellow/50">
-            <div class="absolute right-0 top-0 size-12 border-b-2 border-l-2 border-dc-yellow/10 transition-colors group-hover:border-dc-yellow/30" />
-            <h3 class="mb-2 font-mono text-lg font-bold text-white transition-colors group-hover:text-dc-yellow">MANAGE SPEAKERS</h3>
+          <RouterLink :to="`/admin/events/${event.id}/speakers`" class="editorial-panel group block p-6 transition-all hover:-translate-y-0.5 hover:border-dc-yellow/30 hover:bg-[#191917]">
+            <h3 class="mb-2 text-lg font-black tracking-tight text-white transition-colors group-hover:text-dc-yellow">Manage Speakers</h3>
             <p class="text-sm text-dc-gray-light">Manage approved speaker list for CFP</p>
           </RouterLink>
-          <RouterLink :to="`/admin/events/${event.id}/quiz`" class="group relative block overflow-hidden border-2 border-dc-dark-3 bg-dc-dark-1 p-6 transition-all hover:border-dc-yellow/50">
-            <div class="absolute right-0 top-0 size-12 border-b-2 border-l-2 border-dc-yellow/10 transition-colors group-hover:border-dc-yellow/30" />
-            <h3 class="mb-2 font-mono text-lg font-bold text-white transition-colors group-hover:text-dc-yellow">MANAGE QUIZ</h3>
+          <RouterLink :to="`/admin/events/${event.id}/quiz`" class="editorial-panel group block p-6 transition-all hover:-translate-y-0.5 hover:border-dc-yellow/30 hover:bg-[#191917]">
+            <h3 class="mb-2 text-lg font-black tracking-tight text-white transition-colors group-hover:text-dc-yellow">Manage Quiz</h3>
             <p class="text-sm text-dc-gray-light">Create and run the live quiz for this event</p>
           </RouterLink>
         </div>

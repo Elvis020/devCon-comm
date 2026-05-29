@@ -48,7 +48,7 @@
 
 @layer components {
   .editorial-page {
-    @apply min-h-screen bg-dc-dark;
+    @apply min-h-screen bg-[#090908];
   }
 
   .editorial-wrap {
@@ -72,19 +72,19 @@
   }
 
   .editorial-panel {
-    @apply border border-dc-yellow/10 bg-dc-dark-1/80;
+    @apply rounded-lg border border-dc-yellow/10 bg-[#161615]/85 shadow-[0_18px_70px_rgba(0,0,0,0.24)];
   }
 
   .editorial-action {
-    @apply inline-flex items-center justify-center bg-dc-yellow px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide text-dc-dark transition-all hover:shadow-glow;
+    @apply inline-flex items-center justify-center rounded-md bg-dc-yellow px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide text-dc-dark transition-all hover:-translate-y-0.5 hover:shadow-glow;
   }
 
   .editorial-secondary-action {
-    @apply inline-flex items-center justify-center border border-dc-yellow/25 px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide text-dc-yellow transition-all hover:border-dc-yellow hover:bg-dc-yellow/10;
+    @apply inline-flex items-center justify-center rounded-md border border-dc-yellow/20 bg-dc-yellow/[0.03] px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide text-dc-yellow transition-all hover:border-dc-yellow/50 hover:bg-dc-yellow/10;
   }
 
   .editorial-input {
-    @apply w-full border border-dc-yellow/10 bg-dc-dark-2 px-4 py-3 text-white outline-none transition-colors placeholder:text-dc-gray focus:border-dc-yellow;
+    @apply w-full rounded-md border border-dc-yellow/10 bg-[#20201f] px-4 py-3 text-white outline-none transition-colors placeholder:text-dc-gray focus:border-dc-yellow;
   }
 
   .editorial-label {

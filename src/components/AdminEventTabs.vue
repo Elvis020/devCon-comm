@@ -27,14 +27,14 @@ function isActive(href: string) {
 </script>
 
 <template>
-  <nav class="mb-8 overflow-x-auto border-b border-dc-yellow/10 pb-3">
+  <nav class="mb-8 overflow-x-auto border-b border-dc-yellow/10 pb-4">
     <div class="flex min-w-max gap-2 font-mono text-xs font-bold uppercase tracking-wide">
       <RouterLink
         v-for="tab in tabs"
         :key="tab.href"
         :to="tabPath(tab.href)"
-        class="border px-4 py-2 transition-all"
-        :class="isActive(tab.href) ? 'border-dc-yellow bg-dc-yellow text-dc-dark' : 'border-dc-dark-3 bg-dc-dark-1 text-dc-gray-light hover:border-dc-yellow/40 hover:text-white'"
+        class="rounded-md border px-4 py-2 transition-all"
+        :class="isActive(tab.href) ? 'border-dc-yellow bg-dc-yellow text-dc-dark shadow-[0_10px_28px_rgba(249,225,94,0.16)]' : 'border-dc-yellow/10 bg-dc-yellow/[0.03] text-dc-gray-light hover:border-dc-yellow/35 hover:bg-dc-yellow/[0.06] hover:text-white'"
       >
         {{ tab.label }}
       </RouterLink>

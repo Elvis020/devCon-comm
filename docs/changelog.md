@@ -5,6 +5,12 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 
 ---
 
+## 2026-05-29 — Softer admin UI polish
+
+- Reduced hard-edged admin chrome with softer shared panels, controls, tabs, and inputs.
+- Removed terminal-style event status decoration from the admin event overview.
+- Softened quick action cards and top navigation while keeping the editorial DevCon-Comm identity.
+
 ## 2026-05-29 — Kahoot-from-paper prototype
 
 - Added an admin-only PDF upload endpoint for quiz sessions that validates PDF type/size, extracts text locally, and appends rule-based draft questions to the existing quiz flow.
