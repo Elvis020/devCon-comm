@@ -18,6 +18,8 @@ const merging = ref(false);
 const accountMessage = ref<string | null>(null);
 const accountError = ref<string | null>(null);
 const leaderboardMode = ref<'all-time' | 'monthly'>('all-time');
+const page = ref(1);
+const pageSize = 8;
 
 const claimForm = reactive({
   userId: '',
@@ -36,19 +38,29 @@ const mergeForm = reactive({
 
 const topThree = computed(() => leaderboard.value.slice(0, 3));
 const title = computed(() => leaderboardMode.value === 'monthly' ? 'This Month' : 'All-Time Leaderboard');
+const pageCount = computed(() => Math.max(1, Math.ceil(leaderboard.value.length / pageSize)));
+const paginatedLeaderboard = computed(() => leaderboard.value.slice((page.value - 1) * pageSize, page.value * pageSize));
+const pageStart = computed(() => (leaderboard.value.length === 0 ? 0 : (page.value - 1) * pageSize + 1));
+const pageEnd = computed(() => Math.min(leaderboard.value.length, page.value * pageSize));
 
 async function fetchData() {
   loading.value = true;
   const response = await fetch(`/api/leaderboard?type=${leaderboardMode.value}`);
   if (response.ok) {
     leaderboard.value = await response.json();
+    page.value = Math.min(page.value, pageCount.value);
   }
   loading.value = false;
 }
 
 async function setMode(mode: 'all-time' | 'monthly') {
   leaderboardMode.value = mode;
+  page.value = 1;
   await fetchData();
+}
+
+function goToPage(nextPage: number) {
+  page.value = Math.min(pageCount.value, Math.max(1, nextPage));
 }
 
 async function submitClaim() {
@@ -202,7 +214,7 @@ onMounted(fetchData);
 
           <div class="divide-y-2 divide-dc-dark-3">
             <div
-              v-for="entry in leaderboard"
+            v-for="entry in paginatedLeaderboard"
               :key="entry.rank"
               class="grid grid-cols-12 gap-4 px-6 py-4 transition-colors"
               :class="entry.rank <= 3 ? 'bg-dc-yellow/5 hover:bg-dc-yellow/10' : 'hover:bg-dc-dark-2'"
@@ -237,6 +249,31 @@ onMounted(fetchData);
 
           <div v-if="leaderboard.length === 0" class="py-16 text-center">
             <p class="text-lg text-dc-gray">No scores yet. Be the first.</p>
+          </div>
+
+          <div v-else class="flex flex-col gap-4 border-t border-dc-yellow/10 bg-dc-dark-2/40 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <p class="font-mono text-xs uppercase tracking-wide text-dc-gray-light">
+              Showing {{ pageStart }}-{{ pageEnd }} of {{ leaderboard.length }}
+            </p>
+            <div class="flex items-center gap-2">
+              <button
+                class="rounded-md border border-dc-yellow/20 px-3 py-2 font-mono text-xs font-bold uppercase tracking-wide text-dc-gray-light transition-colors hover:border-dc-yellow/50 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                :disabled="page === 1"
+                @click="goToPage(page - 1)"
+              >
+                Prev
+              </button>
+              <span class="rounded-md border border-dc-yellow/20 px-3 py-2 font-mono text-xs font-bold text-dc-yellow">
+                {{ page }} / {{ pageCount }}
+              </span>
+              <button
+                class="rounded-md border border-dc-yellow/20 px-3 py-2 font-mono text-xs font-bold uppercase tracking-wide text-dc-gray-light transition-colors hover:border-dc-yellow/50 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                :disabled="page === pageCount"
+                @click="goToPage(page + 1)"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
 
