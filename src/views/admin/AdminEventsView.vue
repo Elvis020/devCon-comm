@@ -10,13 +10,20 @@ const loading = ref(true);
 const saving = ref(false);
 const error = ref<string | null>(null);
 const form = reactive({ name: '', description: '', event_date: '' });
+const page = ref(1);
+const pageSize = 6;
 
 const creating = computed(() => route.path.endsWith('/new'));
+const pageCount = computed(() => Math.max(1, Math.ceil(events.value.length / pageSize)));
+const paginatedEvents = computed(() => events.value.slice((page.value - 1) * pageSize, page.value * pageSize));
+const pageStart = computed(() => (events.value.length === 0 ? 0 : (page.value - 1) * pageSize + 1));
+const pageEnd = computed(() => Math.min(events.value.length, page.value * pageSize));
 
 async function fetchEvents() {
   const response = await fetch('/api/events');
   if (response.ok) {
     events.value = (await response.json()).sort((a: Event, b: Event) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime());
+    page.value = Math.min(page.value, pageCount.value);
   }
   loading.value = false;
 }
@@ -54,6 +61,10 @@ function statusClass(status: string): string {
     completed: 'bg-dc-dark-2 text-white border-dc-dark-3',
   };
   return colors[status] ?? colors.draft;
+}
+
+function goToPage(nextPage: number) {
+  page.value = Math.min(pageCount.value, Math.max(1, nextPage));
 }
 
 onMounted(fetchEvents);
@@ -108,7 +119,7 @@ onMounted(fetchEvents);
             <div class="col-span-2 text-right font-mono text-xs font-bold uppercase text-dc-yellow">Actions</div>
           </div>
           <div class="divide-y-2 divide-dc-dark-3">
-            <div v-for="event in events" :key="event.id" class="grid grid-cols-12 gap-4 px-6 py-4 transition-colors hover:bg-dc-dark-2">
+            <div v-for="event in paginatedEvents" :key="event.id" class="grid grid-cols-12 gap-4 px-6 py-4 transition-colors hover:bg-dc-dark-2">
               <div class="col-span-4">
                 <div class="font-mono font-medium text-white">{{ event.name }}</div>
                 <div v-if="event.description" class="mt-1 line-clamp-1 text-sm text-dc-gray-light">{{ event.description }}</div>
@@ -120,6 +131,30 @@ onMounted(fetchEvents);
               <div class="col-span-2 flex items-center justify-end">
                 <RouterLink :to="`/admin/events/${event.id}`" class="font-mono text-sm font-bold uppercase text-dc-yellow hover:text-dc-yellow-glow">MANAGE &rarr;</RouterLink>
               </div>
+            </div>
+          </div>
+          <div class="flex flex-col gap-4 border-t border-dc-yellow/10 bg-dc-dark-2/40 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <p class="font-mono text-xs uppercase tracking-wide text-dc-gray-light">
+              Showing {{ pageStart }}-{{ pageEnd }} of {{ events.length }}
+            </p>
+            <div class="flex items-center gap-2">
+              <button
+                class="border border-dc-yellow/20 px-3 py-2 font-mono text-xs font-bold uppercase tracking-wide text-dc-gray-light transition-colors hover:border-dc-yellow/50 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                :disabled="page === 1"
+                @click="goToPage(page - 1)"
+              >
+                Prev
+              </button>
+              <span class="border border-dc-yellow/20 px-3 py-2 font-mono text-xs font-bold text-dc-yellow">
+                {{ page }} / {{ pageCount }}
+              </span>
+              <button
+                class="border border-dc-yellow/20 px-3 py-2 font-mono text-xs font-bold uppercase tracking-wide text-dc-gray-light transition-colors hover:border-dc-yellow/50 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                :disabled="page === pageCount"
+                @click="goToPage(page + 1)"
+              >
+                Next
+              </button>
             </div>
           </div>
         </div>
