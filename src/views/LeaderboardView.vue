@@ -154,6 +154,12 @@ function rankLabel(rank: number): string {
   return `#${rank}`;
 }
 
+function topThreeLabel(rank: number): string {
+  if (rank === 1) return 'Leader';
+  if (rank === 2) return 'Second';
+  return 'Third';
+}
+
 onMounted(async () => {
   await fetchData();
   const scrollArea = document.querySelector('main');
@@ -183,21 +189,40 @@ onUnmounted(() => {
           class="z-30 -mx-4 mb-8 border-b border-dc-yellow/10 bg-[#090908]/95 px-4 py-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
           :class="keepModeSwitcherSticky ? 'sticky top-0' : 'relative'"
         >
-          <div class="flex flex-wrap gap-3">
-            <button
-              class="rounded-md border px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide transition-colors"
-              :class="leaderboardMode === 'all-time' ? 'border-dc-yellow bg-dc-yellow text-dc-dark' : 'border-dc-yellow/20 text-dc-gray-light hover:border-dc-yellow/50 hover:text-white'"
-              @click="setMode('all-time')"
-            >
-              All Time
-            </button>
-            <button
-              class="rounded-md border px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide transition-colors"
-              :class="leaderboardMode === 'monthly' ? 'border-dc-yellow bg-dc-yellow text-dc-dark' : 'border-dc-yellow/20 text-dc-gray-light hover:border-dc-yellow/50 hover:text-white'"
-              @click="setMode('monthly')"
-            >
-              This Month
-            </button>
+          <div class="grid gap-4 lg:grid-cols-[auto_1fr] lg:items-center">
+            <div class="flex flex-wrap gap-3">
+              <button
+                class="rounded-md border px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide transition-colors"
+                :class="leaderboardMode === 'all-time' ? 'border-dc-yellow bg-dc-yellow text-dc-dark' : 'border-dc-yellow/20 text-dc-gray-light hover:border-dc-yellow/50 hover:text-white'"
+                @click="setMode('all-time')"
+              >
+                All Time
+              </button>
+              <button
+                class="rounded-md border px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide transition-colors"
+                :class="leaderboardMode === 'monthly' ? 'border-dc-yellow bg-dc-yellow text-dc-dark' : 'border-dc-yellow/20 text-dc-gray-light hover:border-dc-yellow/50 hover:text-white'"
+                @click="setMode('monthly')"
+              >
+                This Month
+              </button>
+            </div>
+
+            <div v-if="topThree.length === 3 && !loading" class="grid gap-2 sm:grid-cols-3">
+              <div
+                v-for="entry in topThree"
+                :key="entry.user_id ?? entry.rank"
+                class="rounded-md border px-3 py-2"
+                :class="entry.rank === 1 ? 'border-dc-yellow/35 bg-dc-yellow/[0.08]' : 'border-dc-yellow/10 bg-dc-yellow/[0.03]'"
+              >
+                <div class="flex items-center justify-between gap-3">
+                  <div class="min-w-0">
+                    <p class="font-mono text-[10px] font-bold uppercase tracking-wide text-dc-gray-light">{{ topThreeLabel(entry.rank) }}</p>
+                    <p class="truncate text-sm font-bold text-white">{{ entry.nickname }}</p>
+                  </div>
+                  <p class="shrink-0 font-mono text-lg font-bold" :class="entry.rank === 1 ? 'text-dc-yellow' : 'text-white'">{{ entry.total_score }}</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -209,37 +234,6 @@ onUnmounted(() => {
         </div>
 
         <template v-else>
-          <div v-if="topThree.length === 3" class="mb-12">
-          <div class="mx-auto grid max-w-4xl grid-cols-3 items-end gap-4">
-            <div class="border-2 border-dc-gray-light bg-dc-dark-1 p-6 text-center h-64 flex flex-col justify-end">
-              <div class="mb-2 text-xs font-semibold uppercase tracking-wider text-dc-gray">2nd Place</div>
-              <div class="mb-2 truncate text-lg font-bold text-white">{{ topThree[1]?.nickname }}</div>
-              <div class="flex items-baseline justify-center gap-1">
-                <span class="text-3xl font-black text-white">{{ topThree[1]?.total_score }}</span>
-                <span class="text-xs uppercase text-dc-gray">pts</span>
-              </div>
-            </div>
-
-            <div class="flex h-80 flex-col justify-end border-4 border-dc-yellow-glow bg-dc-yellow p-6 text-center shadow-glow-lg">
-              <div class="mb-2 text-xs font-bold uppercase tracking-wider text-dc-dark">Champion</div>
-              <div class="mb-2 truncate text-2xl font-black text-dc-dark">{{ topThree[0]?.nickname }}</div>
-              <div class="flex items-baseline justify-center gap-1">
-                <span class="text-5xl font-black text-dc-dark">{{ topThree[0]?.total_score }}</span>
-                <span class="text-sm uppercase text-dc-dark">pts</span>
-              </div>
-            </div>
-
-            <div class="flex h-56 flex-col justify-end border-2 border-dc-gray bg-dc-dark-1 p-6 text-center">
-              <div class="mb-2 text-xs font-semibold uppercase tracking-wider text-dc-gray">3rd Place</div>
-              <div class="mb-2 truncate text-lg font-bold text-white">{{ topThree[2]?.nickname }}</div>
-              <div class="flex items-baseline justify-center gap-1">
-                <span class="text-3xl font-black text-white">{{ topThree[2]?.total_score }}</span>
-                <span class="text-xs uppercase text-dc-gray">pts</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
           <div ref="leaderboardPanel" class="editorial-panel">
           <div class="grid grid-cols-12 gap-4 border-b border-dc-yellow/10 bg-dc-dark-2/60 px-6 py-4">
             <div class="col-span-2 text-xs font-bold uppercase tracking-wider text-dc-yellow">Rank</div>
