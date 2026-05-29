@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 
 interface LeaderboardEntry {
   rank: number;
@@ -20,6 +20,8 @@ const accountError = ref<string | null>(null);
 const leaderboardMode = ref<'all-time' | 'monthly'>('all-time');
 const page = ref(1);
 const pageSize = 8;
+const leaderboardPanel = ref<HTMLElement | null>(null);
+const keepModeSwitcherSticky = ref(true);
 
 const claimForm = reactive({
   userId: '',
@@ -51,6 +53,7 @@ async function fetchData() {
     page.value = Math.min(page.value, pageCount.value);
   }
   loading.value = false;
+  requestAnimationFrame(updateModeSwitcherScope);
 }
 
 async function setMode(mode: 'all-time' | 'monthly') {
@@ -61,6 +64,20 @@ async function setMode(mode: 'all-time' | 'monthly') {
 
 function goToPage(nextPage: number) {
   page.value = Math.min(pageCount.value, Math.max(1, nextPage));
+  requestAnimationFrame(updateModeSwitcherScope);
+}
+
+function updateModeSwitcherScope() {
+  const panel = leaderboardPanel.value;
+  const scrollArea = document.querySelector('main');
+  if (!panel || !scrollArea) {
+    keepModeSwitcherSticky.value = true;
+    return;
+  }
+
+  const panelRect = panel.getBoundingClientRect();
+  const scrollRect = scrollArea.getBoundingClientRect();
+  keepModeSwitcherSticky.value = panelRect.bottom > scrollRect.top + 160;
 }
 
 async function submitClaim() {
@@ -137,7 +154,19 @@ function rankLabel(rank: number): string {
   return `#${rank}`;
 }
 
-onMounted(fetchData);
+onMounted(async () => {
+  await fetchData();
+  const scrollArea = document.querySelector('main');
+  scrollArea?.addEventListener('scroll', updateModeSwitcherScope, { passive: true });
+  window.addEventListener('resize', updateModeSwitcherScope);
+  updateModeSwitcherScope();
+});
+
+onUnmounted(() => {
+  const scrollArea = document.querySelector('main');
+  scrollArea?.removeEventListener('scroll', updateModeSwitcherScope);
+  window.removeEventListener('resize', updateModeSwitcherScope);
+});
 </script>
 
 <template>
@@ -149,32 +178,38 @@ onMounted(fetchData);
         <p class="editorial-subtitle">Community reputation from live quiz play, with profile claiming for people who show up across events.</p>
       </div>
 
-      <div class="mb-8 flex flex-wrap gap-3">
-        <button
-          class="border px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide transition-colors"
-          :class="leaderboardMode === 'all-time' ? 'border-dc-yellow bg-dc-yellow text-dc-dark' : 'border-dc-yellow/20 text-dc-gray-light hover:border-dc-yellow/50 hover:text-white'"
-          @click="setMode('all-time')"
+      <section>
+        <div
+          class="z-30 -mx-4 mb-8 border-b border-dc-yellow/10 bg-[#090908]/95 px-4 py-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+          :class="keepModeSwitcherSticky ? 'sticky top-0' : 'relative'"
         >
-          All Time
-        </button>
-        <button
-          class="border px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide transition-colors"
-          :class="leaderboardMode === 'monthly' ? 'border-dc-yellow bg-dc-yellow text-dc-dark' : 'border-dc-yellow/20 text-dc-gray-light hover:border-dc-yellow/50 hover:text-white'"
-          @click="setMode('monthly')"
-        >
-          This Month
-        </button>
-      </div>
-
-      <div v-if="loading" class="flex min-h-[40vh] items-center justify-center">
-        <div class="text-center">
-          <div class="mb-4 inline-block size-16 animate-spin rounded-full border-4 border-dc-yellow border-t-transparent" />
-          <p class="text-lg text-white">Loading...</p>
+          <div class="flex flex-wrap gap-3">
+            <button
+              class="rounded-md border px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide transition-colors"
+              :class="leaderboardMode === 'all-time' ? 'border-dc-yellow bg-dc-yellow text-dc-dark' : 'border-dc-yellow/20 text-dc-gray-light hover:border-dc-yellow/50 hover:text-white'"
+              @click="setMode('all-time')"
+            >
+              All Time
+            </button>
+            <button
+              class="rounded-md border px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide transition-colors"
+              :class="leaderboardMode === 'monthly' ? 'border-dc-yellow bg-dc-yellow text-dc-dark' : 'border-dc-yellow/20 text-dc-gray-light hover:border-dc-yellow/50 hover:text-white'"
+              @click="setMode('monthly')"
+            >
+              This Month
+            </button>
+          </div>
         </div>
-      </div>
 
-      <template v-else>
-        <div v-if="topThree.length === 3" class="mb-12">
+        <div v-if="loading" class="flex min-h-[40vh] items-center justify-center">
+          <div class="text-center">
+            <div class="mb-4 inline-block size-16 animate-spin rounded-full border-4 border-dc-yellow border-t-transparent" />
+            <p class="text-lg text-white">Loading...</p>
+          </div>
+        </div>
+
+        <template v-else>
+          <div v-if="topThree.length === 3" class="mb-12">
           <div class="mx-auto grid max-w-4xl grid-cols-3 items-end gap-4">
             <div class="border-2 border-dc-gray-light bg-dc-dark-1 p-6 text-center h-64 flex flex-col justify-end">
               <div class="mb-2 text-xs font-semibold uppercase tracking-wider text-dc-gray">2nd Place</div>
@@ -205,7 +240,7 @@ onMounted(fetchData);
           </div>
         </div>
 
-        <div class="editorial-panel">
+          <div ref="leaderboardPanel" class="editorial-panel">
           <div class="grid grid-cols-12 gap-4 border-b border-dc-yellow/10 bg-dc-dark-2/60 px-6 py-4">
             <div class="col-span-2 text-xs font-bold uppercase tracking-wider text-dc-yellow">Rank</div>
             <div class="col-span-6 text-xs font-bold uppercase tracking-wider text-dc-yellow">Player</div>
@@ -275,7 +310,9 @@ onMounted(fetchData);
               </button>
             </div>
           </div>
-        </div>
+          </div>
+        </template>
+      </section>
 
         <div class="editorial-panel mt-10 p-6">
           <h2 class="mb-2 text-2xl font-black text-white">Account Tools (Prototype)</h2>
@@ -313,7 +350,6 @@ onMounted(fetchData);
             </form>
           </div>
         </div>
-      </template>
     </div>
   </div>
 </template>
