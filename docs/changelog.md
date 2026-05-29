@@ -11,6 +11,7 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 - Removed terminal-style event status decoration from the admin event overview.
 - Softened quick action cards and top navigation while keeping the editorial DevCon-Comm identity.
 - Simplified the event overview so tabs stay in a consistent position across Overview/Talks/Speakers and the overview no longer repeats navigation as cards.
+- Simplified talk review cards into a quieter list with muted metadata and one primary action.
 
 ## 2026-05-29 — Kahoot-from-paper prototype
 
