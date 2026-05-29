@@ -139,3 +139,18 @@ export interface LeaderboardEntry {
   streak_count: number;                                       // display streak indicator
   previous_rank?: number;                                     // for animation
 }
+
+export interface GeneratedQuizFromPaperSummary {
+  source_file_name: string;
+  extracted_character_count: number;
+  requested_question_count: number;
+  created_question_count: number;
+  generation_note: string;
+  warnings: string[];
+}
+
+export interface GeneratedQuizFromPaperResponse {
+  session_id: string;
+  questions: Question[];
+  summary: GeneratedQuizFromPaperSummary;
+}

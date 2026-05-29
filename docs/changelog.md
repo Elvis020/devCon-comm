@@ -5,6 +5,12 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 
 ---
 
+## 2026-05-29 — Kahoot-from-paper prototype
+
+- Added an admin-only PDF upload endpoint for quiz sessions that validates PDF type/size, extracts text locally, and appends rule-based draft questions to the existing quiz flow.
+- Added Quiz Builder UI for uploading a paper/resource PDF, choosing draft count, viewing generation status, and editing generated questions before opening the lobby.
+- Added local PDF extraction dependency and documented the new quiz-generation API surface.
+
 ## 2026-05-29 — Community product hardening
 
 - Reframed the Vue landing page as a community hub with CFP/live quiz actions, recent published talks, and top members.

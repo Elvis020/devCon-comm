@@ -1,9 +1,10 @@
 import { Hono } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
+import { PDFParse } from 'pdf-parse';
 import { SIMULATED_DELAY_MS } from '@/lib/constants';
 import { compareSecretAnswer, hashSecretAnswer } from '@/lib/account-claim';
 import { createEvent, getAllEvents, getEventById, updateEvent } from '@/lib/mock-db/events';
-import { createQuestion, deleteQuestion, getQuestionsBySession, reorderQuestions, updateQuestion } from '@/lib/mock-db/questions';
+import { createQuestion, deleteQuestion, getQuestionById, getQuestionsBySession, reorderQuestions, updateQuestion } from '@/lib/mock-db/questions';
 import { readData, writeData } from '@/lib/mock-db';
 import { createQuizParticipant, getQuizParticipantBySessionAndUser, getQuizParticipantsBySession, updateQuizParticipant } from '@/lib/mock-db/quiz-participants';
 import { createQuizSession, getAllQuizSessions, getQuizSessionByCode, getQuizSessionById, getQuizSessionsByEvent, updateQuizSession } from '@/lib/mock-db/quiz-sessions';
@@ -14,10 +15,62 @@ import { createUser, getAllUsers, getUserByDeviceId, getUserById, updateUser } f
 import { calculatePoints, calculateStreakBonus } from '@/lib/scoring';
 import { now } from '@/lib/utils';
 import type { Context } from 'hono';
-import type { LeaderboardEntry, QuizParticipant, QuizStateResponse, Response, User } from '@/types';
+import type { GeneratedQuizFromPaperResponse, LeaderboardEntry, Question, QuizParticipant, QuizStateResponse, Response, User } from '@/types';
 
 const app = new Hono();
 const ADMIN_SESSION_COOKIE = 'devcon_admin';
+const PAPER_QUIZ_MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024;
+const PAPER_QUIZ_MAX_TEXT_CHARS = 60_000;
+const PAPER_QUIZ_MIN_TEXT_CHARS = 350;
+const PAPER_QUIZ_DEFAULT_QUESTION_COUNT = 5;
+const PAPER_QUIZ_MAX_QUESTION_COUNT = 8;
+const PAPER_QUIZ_GENERATION_NOTE = 'Prototype rule-based generation from extracted PDF text. Review and edit every question before going live.';
+const STOP_WORDS = new Set([
+  'about',
+  'above',
+  'after',
+  'again',
+  'against',
+  'also',
+  'among',
+  'analysis',
+  'another',
+  'because',
+  'before',
+  'being',
+  'between',
+  'could',
+  'during',
+  'example',
+  'first',
+  'following',
+  'from',
+  'have',
+  'into',
+  'more',
+  'most',
+  'other',
+  'over',
+  'paper',
+  'resource',
+  'same',
+  'such',
+  'than',
+  'that',
+  'their',
+  'there',
+  'these',
+  'this',
+  'those',
+  'through',
+  'under',
+  'using',
+  'where',
+  'which',
+  'while',
+  'with',
+  'would',
+]);
 
 function envValue(key: string): string | undefined {
   return typeof Bun === 'undefined' ? process.env[key] : Bun.env[key];
@@ -391,15 +444,111 @@ app.post('/api/quiz/questions', async (c) => {
     return c.json({ error: 'quiz_session_id, question_text, options, correct_index, and order_index are required' }, 400);
   }
 
+  const validationError = validateQuestionPayload(question_text, options, Number(correct_index));
+  if (validationError) {
+    return c.json({ error: validationError }, 400);
+  }
+
   return c.json(await createQuestion({
     quiz_session_id,
-    question_text,
-    options,
-    correct_index,
+    question_text: String(question_text).trim(),
+    options: options.map((option) => String(option).trim()),
+    correct_index: Number(correct_index),
     order_index,
     time_limit_seconds,
     points,
   }), 201);
+});
+
+app.post('/api/quiz/sessions/:sessionId/questions/from-paper', async (c) => {
+  const adminError = requireAdmin(c);
+  if (adminError) return adminError;
+
+  const session = await getQuizSessionById(c.req.param('sessionId'));
+  if (!session) {
+    return c.json({ error: 'Session not found' }, 404);
+  }
+
+  if (session.status === 'active' || session.status === 'finished') {
+    return c.json({ error: 'Paper questions can only be added before the quiz starts' }, 409);
+  }
+
+  let formData: FormData;
+  try {
+    formData = await c.req.raw.formData();
+  } catch {
+    return c.json({ error: 'Upload must use multipart/form-data' }, 400);
+  }
+
+  const uploadedFile = formData.get('file');
+  if (!(uploadedFile instanceof File)) {
+    return c.json({ error: 'A PDF file is required' }, 400);
+  }
+
+  const fileValidationError = validatePaperQuizFile(uploadedFile);
+  if (fileValidationError) {
+    return c.json({ error: fileValidationError }, 400);
+  }
+
+  const arrayBuffer = await uploadedFile.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+  if (!hasPdfHeader(bytes)) {
+    return c.json({ error: 'Uploaded file does not look like a valid PDF' }, 400);
+  }
+
+  const requestedQuestionCount = parseRequestedQuestionCount(formData.get('question_count'));
+  let extractedText = '';
+
+  try {
+    extractedText = await extractTextFromPdf(bytes);
+  } catch (error) {
+    console.error('PDF extraction failed:', error);
+    return c.json({ error: 'Could not extract text from this PDF. Try a text-based, non-password-protected PDF.' }, 422);
+  }
+
+  if (extractedText.length < PAPER_QUIZ_MIN_TEXT_CHARS) {
+    return c.json({
+      error: 'Not enough readable text was found in this PDF. Scanned/image-only PDFs are not supported by this prototype.',
+    }, 422);
+  }
+
+  const drafts = generateQuestionDraftsFromText(extractedText, requestedQuestionCount);
+  if (drafts.length === 0) {
+    return c.json({ error: 'Could not identify enough quiz-worthy terms in this PDF. Try a longer paper or add questions manually.' }, 422);
+  }
+
+  const existingQuestions = await getQuestionsBySession(session.id);
+  const firstOrderIndex = Math.max(-1, ...existingQuestions.map((question) => question.order_index)) + 1;
+  const createdQuestions: Question[] = [];
+
+  for (const [index, draft] of drafts.entries()) {
+    createdQuestions.push(await createQuestion({
+      quiz_session_id: session.id,
+      question_text: draft.question_text,
+      options: draft.options,
+      correct_index: draft.correct_index,
+      order_index: firstOrderIndex + index,
+      time_limit_seconds: 20,
+      points: 1000,
+    }));
+  }
+
+  const response: GeneratedQuizFromPaperResponse = {
+    session_id: session.id,
+    questions: createdQuestions,
+    summary: {
+      source_file_name: uploadedFile.name || 'uploaded.pdf',
+      extracted_character_count: extractedText.length,
+      requested_question_count: requestedQuestionCount,
+      created_question_count: createdQuestions.length,
+      generation_note: PAPER_QUIZ_GENERATION_NOTE,
+      warnings: createdQuestions.length < requestedQuestionCount
+        ? ['Fewer questions were generated than requested because the extracted text had limited distinct quiz terms.']
+        : [],
+    },
+  };
+
+  return c.json(response, 201);
 });
 
 app.patch('/api/quiz/questions/:questionId', async (c) => {
@@ -407,7 +556,40 @@ app.patch('/api/quiz/questions/:questionId', async (c) => {
   if (adminError) return adminError;
 
   try {
-    return c.json(await updateQuestion(c.req.param('questionId'), await c.req.json()));
+    const questionId = c.req.param('questionId');
+    const existingQuestion = await getQuestionById(questionId);
+    if (!existingQuestion) {
+      return c.json({ error: 'Question not found' }, 404);
+    }
+
+    const body = await c.req.json();
+    const updates: Partial<Omit<Question, 'id' | 'created_at'>> = {};
+
+    if (body.quiz_session_id !== undefined) updates.quiz_session_id = String(body.quiz_session_id);
+    if (body.question_text !== undefined) updates.question_text = String(body.question_text).trim();
+    if (body.options !== undefined) {
+      if (!Array.isArray(body.options)) {
+        return c.json({ error: 'options must be an array of 4 answers' }, 400);
+      }
+      updates.options = body.options.map((option: unknown) => String(option).trim());
+    }
+    if (body.correct_index !== undefined) updates.correct_index = Number(body.correct_index);
+    if (body.order_index !== undefined) updates.order_index = Number(body.order_index);
+    if (body.time_limit_seconds !== undefined) updates.time_limit_seconds = Number(body.time_limit_seconds);
+    if (body.points !== undefined) updates.points = Number(body.points);
+
+    if (body.question_text !== undefined || body.options !== undefined || body.correct_index !== undefined) {
+      const validationError = validateQuestionPayload(
+        updates.question_text ?? existingQuestion.question_text,
+        updates.options ?? existingQuestion.options,
+        updates.correct_index ?? existingQuestion.correct_index,
+      );
+      if (validationError) {
+        return c.json({ error: validationError }, 400);
+      }
+    }
+
+    return c.json(await updateQuestion(questionId, updates));
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'Failed to update question' }, 500);
   }
@@ -817,6 +999,273 @@ app.get('*', (c) => {
   </body>
 </html>`);
 });
+
+function validatePaperQuizFile(file: File): string | null {
+  const isPdfType = file.type === 'application/pdf' || file.type === 'application/x-pdf' || file.type === '';
+  const isPdfName = file.name.toLowerCase().endsWith('.pdf');
+
+  if (!isPdfType || !isPdfName) {
+    return 'File must be a PDF';
+  }
+
+  if (file.size <= 0) {
+    return 'Uploaded PDF is empty';
+  }
+
+  if (file.size > PAPER_QUIZ_MAX_FILE_SIZE_BYTES) {
+    return 'PDF must be 8MB or smaller';
+  }
+
+  return null;
+}
+
+function hasPdfHeader(bytes: Uint8Array): boolean {
+  return bytes.length >= 5
+    && bytes[0] === 0x25
+    && bytes[1] === 0x50
+    && bytes[2] === 0x44
+    && bytes[3] === 0x46
+    && bytes[4] === 0x2d;
+}
+
+function parseRequestedQuestionCount(value: FormDataEntryValue | null): number {
+  const parsed = Number(value ?? PAPER_QUIZ_DEFAULT_QUESTION_COUNT);
+  if (!Number.isFinite(parsed)) {
+    return PAPER_QUIZ_DEFAULT_QUESTION_COUNT;
+  }
+
+  return Math.min(PAPER_QUIZ_MAX_QUESTION_COUNT, Math.max(1, Math.floor(parsed)));
+}
+
+async function extractTextFromPdf(bytes: Uint8Array): Promise<string> {
+  const parser = new PDFParse({
+    data: bytes,
+    useWorkerFetch: false,
+    useSystemFonts: true,
+    stopAtErrors: false,
+  });
+
+  try {
+    const result = await parser.getText({
+      first: 40,
+      pageJoiner: '\n\n',
+      parseHyperlinks: false,
+    });
+
+    return normalizeExtractedText(result.text).slice(0, PAPER_QUIZ_MAX_TEXT_CHARS);
+  } finally {
+    await parser.destroy().catch(() => undefined);
+  }
+}
+
+function normalizeExtractedText(text: string): string {
+  return text
+    .replace(/\u0000/g, ' ')
+    .replace(/-\s*\n\s*/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+}
+
+type QuestionDraft = Pick<Question, 'question_text' | 'options' | 'correct_index'>;
+
+function generateQuestionDraftsFromText(text: string, requestedCount: number): QuestionDraft[] {
+  const terms = extractTerms(text, 80);
+  const sentences = splitCandidateSentences(text)
+    .map((sentence) => ({
+      sentence,
+      score: scoreSentence(sentence),
+      terms: extractTerms(sentence, 8),
+    }))
+    .filter((candidate) => candidate.terms.length > 0)
+    .sort((a, b) => b.score - a.score);
+
+  const drafts: QuestionDraft[] = [];
+  const usedAnswers = new Set<string>();
+
+  for (const candidate of sentences) {
+    if (drafts.length >= requestedCount) {
+      break;
+    }
+
+    const answer = candidate.terms.find((term) => !usedAnswers.has(normalizeTermKey(term)));
+    if (!answer) {
+      continue;
+    }
+
+    const distractors = terms
+      .filter((term) => normalizeTermKey(term) !== normalizeTermKey(answer))
+      .filter((term) => !candidate.sentence.toLowerCase().includes(term.toLowerCase()))
+      .slice(0, 12);
+    const options = pickOptions(answer, distractors);
+
+    if (options.length !== 4) {
+      continue;
+    }
+
+    const correctIndex = options.findIndex((option) => normalizeTermKey(option) === normalizeTermKey(answer));
+    if (correctIndex < 0) {
+      continue;
+    }
+
+    drafts.push({
+      question_text: `Prototype from paper: which term best completes this statement? "${blankSentence(candidate.sentence, answer)}"`,
+      options,
+      correct_index: correctIndex,
+    });
+    usedAnswers.add(normalizeTermKey(answer));
+  }
+
+  return drafts;
+}
+
+function splitCandidateSentences(text: string): string[] {
+  return text
+    .replace(/\s+/g, ' ')
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length >= 80 && sentence.length <= 280)
+    .filter((sentence) => !/^(references|bibliography|appendix|acknowledg)/i.test(sentence))
+    .filter((sentence) => !/(https?:\/\/|www\.|@)/i.test(sentence));
+}
+
+function scoreSentence(sentence: string): number {
+  const terms = extractTerms(sentence, 12);
+  let score = terms.length * 3;
+
+  if (/\b(is|are|was|were|means|refers|defines|enables|supports|uses|provides|requires|improves|reduces|increases)\b/i.test(sentence)) {
+    score += 8;
+  }
+
+  if (/[A-Z]{2,}/.test(sentence)) {
+    score += 4;
+  }
+
+  if (sentence.length >= 110 && sentence.length <= 220) {
+    score += 4;
+  }
+
+  if (/\b(table|figure|fig\.|et al\.|copyright|license)\b/i.test(sentence)) {
+    score -= 8;
+  }
+
+  return score;
+}
+
+function extractTerms(text: string, limit: number): string[] {
+  const counts = new Map<string, { term: string; count: number; score: number }>();
+  const matches = text.match(/\b[A-Za-z][A-Za-z0-9+#./-]{2,}\b/g) ?? [];
+
+  for (const rawTerm of matches) {
+    const term = normalizeDisplayTerm(rawTerm);
+    const key = normalizeTermKey(term);
+
+    if (!isUsableTerm(term, key)) {
+      continue;
+    }
+
+    const current = counts.get(key) ?? { term, count: 0, score: termScore(term) };
+    current.count += 1;
+    current.score += 1;
+    counts.set(key, current);
+  }
+
+  return [...counts.values()]
+    .sort((a, b) => (b.score + b.count) - (a.score + a.count))
+    .map((entry) => entry.term)
+    .slice(0, limit);
+}
+
+function normalizeDisplayTerm(term: string): string {
+  return term.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9+#./-]+$/g, '');
+}
+
+function normalizeTermKey(term: string): string {
+  return term.toLowerCase().replace(/[^a-z0-9+#]+/g, '');
+}
+
+function isUsableTerm(term: string, key: string): boolean {
+  return key.length >= 3
+    && key.length <= 28
+    && !STOP_WORDS.has(key)
+    && !/^\d+$/.test(key)
+    && !/^(doi|isbn|http|https|www|com|org|edu|page|pages|figure|table|chapter|section)$/.test(key);
+}
+
+function termScore(term: string): number {
+  let score = Math.min(term.length, 14);
+  if (/[A-Z]/.test(term.slice(1))) score += 4;
+  if (/[0-9+#./-]/.test(term)) score += 3;
+  if (term.length >= 8) score += 2;
+  return score;
+}
+
+function pickOptions(answer: string, distractors: string[]): string[] {
+  const unique = [answer];
+  const seen = new Set([normalizeTermKey(answer)]);
+
+  for (const distractor of distractors) {
+    const key = normalizeTermKey(distractor);
+    if (!seen.has(key)) {
+      unique.push(distractor);
+      seen.add(key);
+    }
+
+    if (unique.length === 4) {
+      break;
+    }
+  }
+
+  return stableShuffle(unique);
+}
+
+function stableShuffle(options: string[]): string[] {
+  return [...options].sort((a, b) => hashString(a) - hashString(b));
+}
+
+function hashString(value: string): number {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = ((hash << 5) - hash) + value.charCodeAt(index);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function blankSentence(sentence: string, answer: string): string {
+  const escaped = answer.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const blanked = sentence.replace(new RegExp(`\\b${escaped}\\b`, 'i'), '_____');
+  return truncateText(blanked, 210);
+}
+
+function truncateText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  return `${text.slice(0, maxLength - 3).trim()}...`;
+}
+
+function validateQuestionPayload(questionText: unknown, options: unknown[], correctIndex: number): string | null {
+  if (!String(questionText ?? '').trim()) {
+    return 'Question text is required';
+  }
+
+  if (options.length !== 4) {
+    return 'Exactly 4 options are required';
+  }
+
+  if (options.some((option) => !String(option ?? '').trim())) {
+    return 'All options are required';
+  }
+
+  if (!Number.isInteger(correctIndex) || correctIndex < 0 || correctIndex > 3) {
+    return 'correct_index must be between 0 and 3';
+  }
+
+  return null;
+}
 
 async function buildLeaderboard(): Promise<(LeaderboardEntry & { events_participated: number; is_claimed: boolean; device_id: string | null })[]> {
   const users = await getAllUsers();

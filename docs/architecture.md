@@ -112,6 +112,7 @@ devcongress-comm-idea/
 - `/api/users/claim`, `/api/users/merge` — prototype account tools
 - `/api/quiz/active`, `/api/quiz/join`, `/api/quiz/state`, `/api/quiz/answer` — player quiz flow
 - `/api/quiz/sessions*`, `/api/quiz/questions*` — quiz builder/live host flow
+- `/api/quiz/sessions/[sessionId]/questions/from-paper` — admin-only PDF upload, local text extraction, and prototype question generation
 
 ### Legacy Public App Routes (`app/(public)`)
 
@@ -216,4 +217,5 @@ Browser (admin) → PATCH /api/quiz/sessions/[id]
 | `tailwind-merge` | Merge Tailwind class strings without conflicts |
 | `class-variance-authority` | Variant-based component styling |
 | `uuid` | Generate entity IDs |
+| `pdf-parse` | Local server-side PDF text extraction for prototype quiz generation |
 | `tsx` | Run TypeScript seed script (`pnpm seed`) |

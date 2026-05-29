@@ -168,6 +168,9 @@ POST   /api/quiz/questions                 body: { quiz_session_id, question_tex
 PATCH  /api/quiz/questions/[questionId]    body: Partial<Question>
 DELETE /api/quiz/questions/[questionId]
 POST   /api/quiz/questions/reorder         body: { session_id, question_ids[] }
+POST   /api/quiz/sessions/[sessionId]/questions/from-paper
+       multipart/form-data: { file: PDF, question_count? }
+       → requires admin session, extracts text locally, appends prototype rule-based questions to the session
 ```
 
 ### Slides Upload Endpoints
