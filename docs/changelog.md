@@ -8,9 +8,11 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 ## 2026-05-29 — Stack migration foundation
 
 - Switched package management from npm lockfile to pnpm and added `pnpm-lock.yaml`.
-- Added Vue 3 + Vite app shell under `src/` with a migration dashboard backed by existing mock data.
+- Added Vue 3 + Vite app shell under `src/` and restored the DEV::CON[] branded landing page with Lato/JetBrains Mono fonts.
 - Added Hono API app and Bun production server under `server/` so the UI and `/api/*` run on one same-origin port.
-- Added active `/api/health`, `/api/overview`, `/api/events`, `/api/talks`, and `/api/leaderboard` Hono endpoints.
+- Ported public Vue routes for archive, event talks, leaderboard, CFP, My Talks, quiz join, and live player gameplay.
+- Ported admin Vue routes for event management, event status, talks, speakers, quiz builder, and live quiz controls.
+- Added matching Hono endpoints for event CRUD, speaker allowlists, CFP, talks/slides, leaderboard/account tools, quiz sessions/questions, join/state/answer.
 - Updated TypeScript, Vite, Tailwind, and docs for the new migration target while keeping the legacy Next implementation as reference.
 
 ## 2026-05-01 — Docs sync to current app/api surface

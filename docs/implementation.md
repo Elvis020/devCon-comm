@@ -7,7 +7,11 @@
 | `src/main.ts` | Vue app bootstrap — Pinia, Vue Router, global CSS |
 | `src/App.vue` | Active app shell and top navigation |
 | `src/router.ts` | Active Vue route table |
-| `src/views/DashboardView.vue` | Migration dashboard backed by current mock data |
+| `src/views/DashboardView.vue` | DEV::CON[] landing page backed by current mock data |
+| `src/views/ArchiveView.vue` / `ArchiveEventView.vue` | Public archive and talk detail surfaces |
+| `src/views/CfpView.vue` / `MyTalksView.vue` | Speaker CFP and slide management flows |
+| `src/views/PlayView.vue` / `PlayCodeView.vue` | Quiz join and live player gameplay |
+| `src/views/admin/*` | Active admin event/talk/speaker/quiz management views |
 | `server/app.ts` | Hono app — active API routes plus dev SPA fallback |
 | `server/index.ts` | Bun production server — serves `dist/` and `/api/*` on one port |
 | `vite.config.ts` | Vite + Vue + Hono dev-server wiring |
@@ -18,7 +22,7 @@
 ## Route-to-Module Notes (Current)
 
 - **Event + CFP flow**
-  - Active Vue migration route: pending
+  - Active Vue pages: `src/views/CfpView.vue`, `src/views/admin/AdminEventsView.vue`, `src/views/admin/AdminEventView.vue`
   - Public CFP page: `app/(public)/cfp/[eventId]/page.tsx`
   - APIs: `/api/events/[eventId]`, `/api/events/[eventId]/validate-speaker`, `/api/cfp`
 - **Speaker management**
@@ -29,7 +33,7 @@
   - Speaker page: `app/(public)/my-talks/page.tsx`
   - APIs: `/api/talks/[talkId]`, `/api/talks/[talkId]/upload`, `/api/my-talks`
 - **Quiz authoring + live ops**
-  - Active Vue migration route: pending
+  - Active Vue pages: `src/views/admin/AdminQuizView.vue`, `src/views/PlayView.vue`, `src/views/PlayCodeView.vue`
   - Builder: `app/(admin)/admin/events/[eventId]/quiz/page.tsx`
   - Live control: `app/(admin)/admin/events/[eventId]/quiz/live/page.tsx`
   - APIs: `/api/quiz/sessions*`, `/api/quiz/questions*`, `/api/quiz/state`, `/api/quiz/answer`, `/api/quiz/active`, `/api/quiz/join`

@@ -77,15 +77,38 @@ devcongress-comm-idea/
 ### Active Vue Routes (`src/router.ts`)
 
 - `/` — migration dashboard backed by `/api/overview`
-- `/admin/events`, `/archive`, `/leaderboard`, `/play` — temporary redirects to `/` until migrated
+- `/archive` — completed event archive
+- `/archive/[eventId]` — published talks for one event
+- `/leaderboard` — public leaderboard and prototype account claim/merge tools
+- `/cfp/[eventId]` — speaker CFP submission
+- `/my-talks` — speaker lookup and slide URL upload/update
+- `/play` — quiz join form
+- `/play/[code]` — live quiz player flow
+- `/admin/events` — event management overview
+- `/admin/events/new` — create event form
+- `/admin/events/[eventId]` — event detail and status progression
+- `/admin/events/[eventId]/talks` — talk review/status management
+- `/admin/events/[eventId]/speakers` — speaker allowlist management
+- `/admin/events/[eventId]/quiz` — quiz builder
+- `/admin/events/[eventId]/quiz/live` — live quiz host controls
 
 ### Active Hono API Routes (`server/app.ts`)
 
 - `/api/health` — single-server runtime smoke check
 - `/api/overview` — events, talks, and leaderboard summary for the Vue shell
-- `/api/events` — all events
+- `/api/events` — all events, create event
+- `/api/events/[eventId]` — event detail/status update
+- `/api/events/[eventId]/talks` — talks for event
+- `/api/events/[eventId]/speakers*` — speaker allowlist CRUD
+- `/api/events/[eventId]/validate-speaker` — CFP speaker allowlist validation
+- `/api/cfp` — CFP submission
 - `/api/talks` — all talks, optional `eventId` query filter
-- `/api/leaderboard` — top quiz participants
+- `/api/talks/[talkId]` — talk status/slide URL update
+- `/api/my-talks` — speaker talk lookup
+- `/api/leaderboard` — all-time/session leaderboard
+- `/api/users/claim`, `/api/users/merge` — prototype account tools
+- `/api/quiz/active`, `/api/quiz/join`, `/api/quiz/state`, `/api/quiz/answer` — player quiz flow
+- `/api/quiz/sessions*`, `/api/quiz/questions*` — quiz builder/live host flow
 
 ### Legacy Public App Routes (`app/(public)`)
 

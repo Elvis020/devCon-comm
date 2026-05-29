@@ -12,16 +12,29 @@ const overview = ref<OverviewResponse | null>(null);
 const error = ref<string | null>(null);
 const loading = ref(true);
 
-const nextEvent = computed(() => {
-  const events = overview.value?.events ?? [];
-  return [...events]
-    .filter((event) => new Date(event.event_date).getTime() >= Date.now())
-    .sort((a, b) => a.event_date.localeCompare(b.event_date))[0] ?? events[0] ?? null;
+const completedEvents = computed(() => {
+  return [...(overview.value?.events ?? [])]
+    .filter((event) => event.status === 'completed')
+    .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime());
 });
 
-const acceptedTalks = computed(() => {
-  return (overview.value?.talks ?? []).filter((talk) => ['accepted', 'slides_received', 'published'].includes(talk.status));
+const upcomingEvent = computed(() => {
+  return [...(overview.value?.events ?? [])]
+    .filter((event) => event.status === 'live' || event.status === 'upcoming')
+    .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime())[0] ?? null;
 });
+
+const talksCount = computed(() => {
+  return (overview.value?.talks ?? []).filter((talk) => ['accepted', 'slides_received', 'published'].includes(talk.status)).length;
+});
+
+function formatDate(value: string): string {
+  return new Intl.DateTimeFormat('en', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(new Date(value));
+}
 
 onMounted(async () => {
   try {
@@ -39,73 +52,87 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="mx-auto grid max-w-6xl gap-8 px-5 py-10 lg:grid-cols-[1.2fr_0.8fr]">
-    <div class="space-y-8">
-      <div class="border-l-4 border-dc-yellow pl-5">
-        <p class="font-mono text-sm uppercase tracking-[0.3em] text-dc-gray-light">Migration spine</p>
-        <h1 class="mt-3 max-w-3xl text-4xl font-black leading-tight text-white sm:text-6xl">
-          Vue, Vite, Bun and one same-origin app server.
-        </h1>
-        <p class="mt-5 max-w-2xl text-lg leading-8 text-dc-gray-light">
-          The new shell is wired to the existing mock data so we can migrate page-by-page without losing the conference workflow.
-        </p>
-      </div>
+  <div class="h-full overflow-hidden bg-dc-dark">
+    <div class="relative flex h-full items-center justify-center">
+      <div class="absolute inset-0 bg-gradient-to-br from-dc-dark-1 via-dc-dark to-dc-dark opacity-50" />
+      <div
+        class="absolute inset-0"
+        style="
+          background-image:
+            linear-gradient(rgba(249, 225, 94, 0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(249, 225, 94, 0.03) 1px, transparent 1px);
+          background-size: 40px 40px;
+        "
+      />
 
-      <div v-if="loading" class="border border-dc-dark-3 bg-dc-dark-1 p-6 font-mono text-dc-gray-light">
-        Loading project data...
-      </div>
-      <div v-else-if="error" class="border border-red-500/60 bg-red-950/30 p-6 font-mono text-red-200">
-        {{ error }}
-      </div>
-      <div v-else class="grid gap-4 sm:grid-cols-3">
-        <article class="border border-dc-dark-3 bg-dc-dark-1 p-5">
-          <p class="font-mono text-xs uppercase text-dc-gray-light">Events</p>
-          <p class="mt-3 text-4xl font-black text-dc-yellow">{{ overview?.events.length ?? 0 }}</p>
-        </article>
-        <article class="border border-dc-dark-3 bg-dc-dark-1 p-5">
-          <p class="font-mono text-xs uppercase text-dc-gray-light">Accepted Talks</p>
-          <p class="mt-3 text-4xl font-black text-dc-yellow">{{ acceptedTalks.length }}</p>
-        </article>
-        <article class="border border-dc-dark-3 bg-dc-dark-1 p-5">
-          <p class="font-mono text-xs uppercase text-dc-gray-light">Leaderboard</p>
-          <p class="mt-3 text-4xl font-black text-dc-yellow">{{ overview?.leaderboard.length ?? 0 }}</p>
-        </article>
-      </div>
-
-      <article v-if="nextEvent" class="border border-dc-yellow/50 bg-dc-dark-1 p-6 shadow-glow-sm">
-        <p class="font-mono text-xs uppercase tracking-[0.25em] text-dc-yellow">Next event</p>
-        <h2 class="mt-3 text-3xl font-black">{{ nextEvent.name }}</h2>
-        <p class="mt-3 max-w-2xl text-dc-gray-light">{{ nextEvent.description }}</p>
-        <div class="mt-5 flex flex-wrap gap-3 font-mono text-xs uppercase">
-          <span class="border border-dc-dark-3 px-3 py-2 text-dc-gray-light">{{ nextEvent.event_date }}</span>
-          <span class="border border-dc-yellow/50 px-3 py-2 text-dc-yellow">{{ nextEvent.status }}</span>
+      <div class="relative mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8">
+        <div v-if="loading" class="text-center font-mono text-sm uppercase tracking-[0.25em] text-dc-gray-light">
+          Loading DevCon-Comm...
         </div>
-      </article>
-    </div>
 
-    <aside class="space-y-4">
-      <div class="border border-dc-dark-3 bg-dc-dark-1 p-5">
-        <h2 class="font-mono text-sm uppercase tracking-[0.25em] text-dc-yellow">Migration map</h2>
-        <ul class="mt-5 space-y-4 text-sm leading-6 text-dc-gray-light">
-          <li><strong class="text-white">src/</strong> now owns the Vue app shell.</li>
-          <li><strong class="text-white">server/</strong> owns Hono API routes and Bun production serving.</li>
-          <li><strong class="text-white">lib/</strong> and <strong class="text-white">data/</strong> stay shared while pages move over.</li>
-        </ul>
-      </div>
+        <div v-else-if="error" class="mx-auto max-w-xl border-2 border-red-500/70 bg-red-950/30 p-6 text-center font-mono text-red-100">
+          {{ error }}
+        </div>
 
-      <div class="border border-dc-dark-3 bg-dc-dark-1 p-5">
-        <h2 class="font-mono text-sm uppercase tracking-[0.25em] text-dc-yellow">Top players</h2>
-        <ol class="mt-5 space-y-3">
-          <li
-            v-for="entry in overview?.leaderboard.slice(0, 5)"
-            :key="entry.user_id"
-            class="flex items-center justify-between border-b border-dc-dark-3 pb-3 text-sm"
+        <div v-else class="space-y-6 text-center sm:space-y-8">
+          <div
+            v-if="upcomingEvent"
+            class="inline-flex items-center gap-2 rounded border border-dc-yellow/30 bg-dc-dark-2 px-3 py-1.5 font-mono text-xs text-dc-yellow shadow-glow-sm sm:px-4 sm:py-2 sm:text-sm"
           >
-            <span class="text-white">{{ entry.rank }}. {{ entry.nickname }}</span>
-            <span class="font-mono text-dc-yellow">{{ entry.total_score }}</span>
-          </li>
-        </ol>
+            <span class="inline-block size-1.5 animate-pulse rounded-full bg-dc-yellow" />
+            <span class="text-dc-gray">Next:</span>
+            <span class="font-bold">{{ formatDate(upcomingEvent.event_date) }}</span>
+          </div>
+
+          <h1 class="font-mono text-5xl font-black leading-none tracking-tight sm:text-7xl md:text-8xl lg:text-9xl">
+            <span class="text-white">DEV</span><span class="text-dc-yellow">::</span><span class="text-white">CON</span><span class="text-dc-gray">[]</span>
+          </h1>
+
+          <p class="mx-auto max-w-2xl font-mono text-base text-dc-gray-light sm:whitespace-nowrap sm:text-xl md:text-2xl">
+            Community tech talks &bull; Learn from experts &bull; Share knowledge
+          </p>
+
+          <div class="pt-2 sm:pt-4">
+            <RouterLink
+              to="/archive"
+              class="inline-flex items-center gap-2 bg-dc-yellow px-6 py-3 font-mono text-sm font-bold uppercase tracking-wider text-dc-dark transition-all hover:shadow-glow sm:gap-3 sm:px-10 sm:py-5 sm:text-lg"
+            >
+              <span class="inline-block size-1.5 animate-pulse bg-dc-dark sm:size-2" />
+              View Talks
+            </RouterLink>
+          </div>
+
+          <div class="flex items-center justify-center gap-6 pt-8 sm:gap-8 sm:pt-12">
+            <div class="text-center">
+              <div class="mb-1 font-mono text-3xl font-bold text-dc-yellow sm:mb-2 sm:text-5xl md:text-6xl">
+                {{ completedEvents.length }}
+              </div>
+              <div class="font-mono text-xs uppercase tracking-wider text-dc-gray sm:text-sm">
+                Events
+              </div>
+            </div>
+
+            <div class="h-12 w-px bg-dc-yellow/20 sm:h-16" />
+
+            <div class="text-center">
+              <div class="mb-1 font-mono text-3xl font-bold text-dc-yellow sm:mb-2 sm:text-5xl md:text-6xl">
+                {{ talksCount }}
+              </div>
+              <div class="font-mono text-xs uppercase tracking-wider text-dc-gray sm:text-sm">
+                Talks
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    </aside>
-  </section>
+
+      <div class="absolute inset-x-0 bottom-0 border-t border-dc-yellow/20 bg-dc-dark-1/50 backdrop-blur-sm">
+        <div class="mx-auto max-w-7xl px-4 py-4 sm:py-6">
+          <p class="text-center font-mono text-xs text-dc-gray sm:text-sm">
+            <span class="text-dc-yellow">&copy;</span> DevCon-Comm - Community Presentations & Kahoot Sessions
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
