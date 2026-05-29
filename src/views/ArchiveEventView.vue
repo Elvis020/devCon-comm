@@ -29,15 +29,6 @@ function slidesUrl(talk: Talk): string | null {
   return null;
 }
 
-function initials(name: string): string {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('');
-}
-
 onMounted(async () => {
   try {
     const eventId = String(route.params.eventId);
@@ -64,13 +55,13 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-dc-dark">
-    <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      <RouterLink to="/archive" class="mb-8 inline-flex items-center gap-2 font-mono text-dc-yellow transition-colors hover:text-dc-yellow-glow">
+  <div class="editorial-page">
+    <div class="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
+      <RouterLink to="/archive" class="mb-10 inline-flex items-center gap-2 font-mono text-sm text-dc-yellow transition-colors hover:text-dc-yellow-glow">
         <span>&larr;</span> BACK TO ARCHIVE
       </RouterLink>
 
-      <div v-if="loading" class="border-2 border-dc-dark-3 bg-dc-dark-1 p-12 text-center font-mono text-dc-gray">
+      <div v-if="loading" class="editorial-panel p-12 text-center font-mono text-dc-gray">
         Loading event...
       </div>
       <div v-else-if="error || !event" class="flex min-h-[50vh] items-center justify-center p-4">
@@ -83,77 +74,64 @@ onMounted(async () => {
       </div>
 
       <template v-else>
-        <div class="mb-12">
-          <h1 class="mb-2 font-mono text-4xl font-bold text-white sm:text-5xl">
+        <header class="mb-14 border-b border-dc-yellow/10 pb-10">
+          <p class="editorial-eyebrow">archive issue</p>
+          <h1 class="max-w-4xl text-4xl font-black tracking-tight text-white sm:text-5xl">
             {{ event.name }}
           </h1>
-          <p class="mb-4 font-mono text-dc-gray-light">
-            <span class="text-dc-yellow">@</span> {{ formatDate(event.event_date) }}
+          <p class="mt-4 font-mono text-sm uppercase tracking-wide text-dc-gray-light">
+            {{ formatDate(event.event_date) }}
           </p>
-          <p v-if="event.description" class="max-w-3xl text-lg text-white/80">
+          <p v-if="event.description" class="mt-6 max-w-3xl text-lg leading-8 text-dc-gray-light">
             {{ event.description }}
           </p>
+        </header>
+
+        <div class="mb-5 flex items-end justify-between gap-4">
+          <div>
+            <p class="editorial-eyebrow mb-2">presentations</p>
+            <h2 class="text-2xl font-black tracking-tight text-white">
+              Published Talks
+            </h2>
+          </div>
+          <span class="font-mono text-sm text-dc-gray-light">{{ publishedTalks.length }} total</span>
         </div>
 
-        <div class="mb-6">
-          <h2 class="flex items-center gap-3 font-mono text-2xl font-bold text-white">
-            <span class="text-dc-yellow">$</span> PRESENTATIONS
-            <span class="text-lg text-dc-gray">({{ publishedTalks.length }})</span>
-          </h2>
-        </div>
-
-        <div v-if="publishedTalks.length === 0" class="border-2 border-dc-dark-3 bg-dc-dark-1 p-12 text-center">
+        <div v-if="publishedTalks.length === 0" class="editorial-panel p-12 text-center">
           <p class="font-mono text-dc-gray">No presentations published yet</p>
         </div>
 
-        <div v-else class="space-y-6">
+        <div v-else class="divide-y divide-dc-yellow/10 border-y border-dc-yellow/10">
           <article
             v-for="talk in publishedTalks"
             :key="talk.id"
-            class="group overflow-hidden border-2 border-dc-dark-3 bg-dc-dark-1 transition-colors hover:border-dc-yellow/30"
+            class="py-7"
           >
-            <div class="border-b-2 border-dc-dark-3 p-6 pb-5">
-              <h3 class="mb-4 text-balance font-mono text-xl font-bold leading-tight text-white">
-                {{ talk.title }}
-              </h3>
-
-              <div class="flex items-center gap-4">
-                <div class="flex size-14 shrink-0 items-center justify-center rounded-full border-2 border-dc-yellow/40 bg-dc-dark-2 font-mono font-bold text-dc-yellow">
-                  {{ initials(talk.speaker_name) }}
-                </div>
-                <div class="min-w-0 flex-1">
-                  <p class="truncate font-mono text-sm font-bold text-dc-yellow">
-                    {{ talk.speaker_name }}
-                  </p>
-                  <p v-if="talk.bio" class="mt-1 truncate font-mono text-xs text-white/50">
-                    {{ talk.bio }}
-                  </p>
-                </div>
+            <div class="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
+              <div>
+                <p class="mb-2 font-mono text-xs uppercase tracking-wide text-dc-gray">
+                  {{ talk.topic || 'General' }}
+                </p>
+                <h3 class="text-2xl font-black tracking-tight text-white">
+                  {{ talk.title }}
+                </h3>
+                <p class="mt-2 text-sm text-dc-gray-light">
+                  {{ talk.speaker_name }}<span v-if="talk.bio">, {{ talk.bio }}</span>
+                </p>
+                <p v-if="talk.abstract" class="mt-5 max-w-3xl text-base leading-7 text-dc-gray-light">
+                  {{ talk.abstract }}
+                </p>
               </div>
-            </div>
 
-            <div v-if="talk.abstract" class="border-b-2 border-dc-dark-3 p-6">
-              <p class="text-pretty text-sm leading-relaxed text-white/80">
-                {{ talk.abstract }}
-              </p>
-            </div>
-
-            <div v-if="slidesUrl(talk)" class="bg-dc-dark-2/30 p-6">
-              <div class="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
-                <a
-                  :href="slidesUrl(talk) ?? undefined"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="flex flex-1 items-center justify-center gap-2 bg-dc-yellow px-6 py-3 font-mono font-bold uppercase tracking-wide text-dc-dark transition-shadow hover:shadow-glow"
-                >
-                  <span>View Slides</span>
-                  <span>&rarr;</span>
-                </a>
-                <div class="flex items-center justify-center gap-2 border-2 border-green-400/20 bg-green-900/10 px-4 py-2">
-                  <span class="font-mono text-sm text-green-400">OK</span>
-                  <span class="font-mono text-xs uppercase tracking-wide text-green-400">Available</span>
-                </div>
-              </div>
+              <a
+                v-if="slidesUrl(talk)"
+                :href="slidesUrl(talk) ?? undefined"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex rounded-md border border-dc-yellow/20 bg-dc-yellow/[0.03] px-4 py-2 font-mono text-sm font-bold uppercase tracking-wide text-dc-yellow transition-colors hover:border-dc-yellow/50 hover:bg-dc-yellow/10"
+              >
+                Slides &rarr;
+              </a>
             </div>
           </article>
         </div>

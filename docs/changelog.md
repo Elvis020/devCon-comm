@@ -12,6 +12,7 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 - Softened quick action cards and top navigation while keeping the editorial DevCon-Comm identity.
 - Simplified the event overview so tabs stay in a consistent position across Overview/Talks/Speakers and the overview no longer repeats navigation as cards.
 - Simplified talk review cards into a quieter list with muted metadata and one primary action.
+- Redesigned archive event details as a quieter editorial list with restrained slide links and no terminal symbols.
 
 ## 2026-05-29 — Kahoot-from-paper prototype
 
