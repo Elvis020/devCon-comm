@@ -65,6 +65,7 @@ devcongress-comm-idea/
 | `app/(admin)` | Legacy organizer dashboard: event/talk/quiz/speaker management |
 | `app/api` | Legacy REST route handlers retained during migration |
 | `lib/mock-db` | Typed CRUD over JSON files; promise-queue serializes writes |
+| `lib/supabase` | Typed Supabase clients for browser anon access and server service-role access |
 | `lib/scoring.ts` | Speed-scaled point formula + streak bonus calculation |
 | `lib/design-system.ts` | JS-side design tokens; mirrors `tailwind.config.ts` |
 | `hooks/` | Legacy React hooks: `useRole`, `useDeviceId`, `useQuizPolling`, `useCountdown` |
@@ -98,6 +99,7 @@ devcongress-comm-idea/
 ### Active Hono API Routes (`server/app.ts`)
 
 - `/api/health` — single-server runtime smoke check
+- `/api/health/supabase` — Supabase config/table reachability smoke check
 - `/api/overview` — events, talks, and leaderboard summary for the Vue shell
 - `/api/auth/session`, `/api/auth/admin/login`, `/api/auth/logout` — same-origin prototype admin session
 - `/api/events` — all events, create event
@@ -210,6 +212,7 @@ Browser (admin) → PATCH /api/quiz/sessions/[id]
 | `vue` 3 | Active UI rendering |
 | `vite` 6 | Active dev server and frontend bundler |
 | `@hono/vite-dev-server` | Runs the Hono app through one Vite dev server |
+| `@supabase/supabase-js` | Supabase client for feedback storage and future production data migration |
 | `hono` | Active API framework |
 | `bun` | Production runtime and static/API server |
 | `pinia` | Active client state library |

@@ -57,15 +57,15 @@ const primaryLabel = computed(() => (isOrganizerPath.value ? 'Organizer Console'
           <div class="relative">
             <p class="font-mono text-xs font-semibold uppercase tracking-[0.22em] text-dc-yellow">reconnect</p>
             <div class="mt-8 space-y-4">
-              <RouterLink to="/archive" class="group block rounded-md border border-dc-yellow/10 bg-dc-yellow/[0.03] p-4 transition-colors hover:border-dc-yellow/35 hover:bg-dc-yellow/[0.07]">
+              <RouterLink to="/archive" class="motion-surface group block rounded-md border border-dc-yellow/10 bg-dc-yellow/[0.03] p-4 hover:border-dc-yellow/35 hover:bg-dc-yellow/[0.07]">
                 <p class="font-mono text-sm font-bold uppercase tracking-wide text-white group-hover:text-dc-yellow">Archive</p>
                 <p class="mt-2 text-sm leading-6 text-dc-gray-light">Find published talks and slide decks.</p>
               </RouterLink>
-              <RouterLink to="/my-talks" class="group block rounded-md border border-dc-yellow/10 bg-dc-yellow/[0.03] p-4 transition-colors hover:border-dc-yellow/35 hover:bg-dc-yellow/[0.07]">
+              <RouterLink to="/my-talks" class="motion-surface group block rounded-md border border-dc-yellow/10 bg-dc-yellow/[0.03] p-4 hover:border-dc-yellow/35 hover:bg-dc-yellow/[0.07]">
                 <p class="font-mono text-sm font-bold uppercase tracking-wide text-white group-hover:text-dc-yellow">My Talks</p>
                 <p class="mt-2 text-sm leading-6 text-dc-gray-light">Check speaker submissions and uploads.</p>
               </RouterLink>
-              <RouterLink to="/play" class="group block rounded-md border border-dc-yellow/10 bg-dc-yellow/[0.03] p-4 transition-colors hover:border-dc-yellow/35 hover:bg-dc-yellow/[0.07]">
+              <RouterLink to="/play" class="motion-surface group block rounded-md border border-dc-yellow/10 bg-dc-yellow/[0.03] p-4 hover:border-dc-yellow/35 hover:bg-dc-yellow/[0.07]">
                 <p class="font-mono text-sm font-bold uppercase tracking-wide text-white group-hover:text-dc-yellow">Live Quiz</p>
                 <p class="mt-2 text-sm leading-6 text-dc-gray-light">Join when a host opens a session.</p>
               </RouterLink>

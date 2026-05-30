@@ -2,7 +2,6 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import type { Talk, TalkStatus } from '@/types';
-import AdminEventTabs from '@/src/components/AdminEventTabs.vue';
 import { adminPath } from '@/src/admin-routes';
 
 const route = useRoute();
@@ -74,8 +73,8 @@ function slideLabel(talk: Talk): string {
 
 function actionClass(isPrimary = false): string {
   return isPrimary
-    ? 'rounded-md bg-dc-yellow px-4 py-2 font-mono text-xs font-bold uppercase tracking-wide text-dc-dark transition-all hover:shadow-glow disabled:opacity-40'
-    : 'rounded-md border border-dc-yellow/10 bg-dc-yellow/[0.03] px-4 py-2 font-mono text-xs font-bold uppercase tracking-wide text-dc-gray-light transition-colors hover:border-dc-yellow/35 hover:text-white disabled:opacity-40';
+    ? 'motion-press rounded-md bg-dc-yellow px-4 py-2 font-mono text-xs font-bold uppercase tracking-wide text-dc-dark hover:shadow-glow disabled:opacity-40'
+    : 'motion-press rounded-md border border-dc-yellow/10 bg-dc-yellow/[0.03] px-4 py-2 font-mono text-xs font-bold uppercase tracking-wide text-dc-gray-light hover:border-dc-yellow/35 hover:text-white disabled:opacity-40';
 }
 
 onMounted(fetchTalks);
@@ -84,10 +83,6 @@ onMounted(fetchTalks);
 <template>
   <div class="editorial-page">
     <div class="editorial-wrap">
-      <RouterLink :to="adminPath(`events/${route.params.eventId}`)" class="mb-6 inline-flex items-center gap-2 font-mono text-dc-yellow hover:text-dc-yellow-glow">
-        <span>&larr;</span> BACK TO EVENT
-      </RouterLink>
-      <AdminEventTabs :event-id="String(route.params.eventId)" />
       <div class="editorial-header">
         <p class="editorial-eyebrow">program desk</p>
         <h1 class="editorial-title">Talk Management</h1>

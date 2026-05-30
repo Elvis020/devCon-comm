@@ -1,20 +1,25 @@
 import vue from '@vitejs/plugin-vue';
 import devServer from '@hono/vite-dev-server';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 
-export default defineConfig({
-  plugins: [
-    vue(),
-    devServer({
-      entry: 'server/app.ts',
-    }),
-  ],
-  resolve: {
-    alias: {
-      '@': new URL('.', import.meta.url).pathname,
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+
+  return {
+    plugins: [
+      vue(),
+      devServer({
+        entry: 'server/app.ts',
+        env,
+      }),
+    ],
+    resolve: {
+      alias: {
+        '@': new URL('.', import.meta.url).pathname,
+      },
     },
-  },
-  server: {
-    port: 3000,
-  },
+    server: {
+      port: 3000,
+    },
+  };
 });

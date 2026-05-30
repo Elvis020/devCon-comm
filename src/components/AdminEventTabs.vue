@@ -34,7 +34,7 @@ function isActive(href: string) {
         v-for="tab in tabs"
         :key="tab.href"
         :to="tabPath(tab.href)"
-        class="rounded-md border px-4 py-2 transition-all"
+        class="motion-press rounded-md border px-4 py-2"
         :class="isActive(tab.href) ? 'border-dc-yellow bg-dc-yellow text-dc-dark shadow-[0_10px_28px_rgba(249,225,94,0.16)]' : 'border-dc-yellow/10 bg-dc-yellow/[0.03] text-dc-gray-light hover:border-dc-yellow/35 hover:bg-dc-yellow/[0.06] hover:text-white'"
       >
         {{ tab.label }}

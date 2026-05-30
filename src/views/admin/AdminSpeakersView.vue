@@ -2,7 +2,6 @@
 import { onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import type { Event, EventSpeaker } from '@/types';
-import AdminEventTabs from '@/src/components/AdminEventTabs.vue';
 import { adminPath } from '@/src/admin-routes';
 
 const route = useRoute();
@@ -53,11 +52,6 @@ onMounted(fetchAll);
 <template>
   <div class="editorial-page">
     <div class="editorial-wrap">
-      <RouterLink :to="adminPath(`events/${route.params.eventId}`)" class="mb-6 inline-flex items-center gap-2 font-mono text-dc-yellow hover:text-dc-yellow-glow">
-        <span>&larr;</span> BACK TO EVENT
-      </RouterLink>
-      <AdminEventTabs :event-id="String(route.params.eventId)" />
-
       <div v-if="loading" class="py-12 text-center font-mono text-white">LOADING...</div>
       <template v-else>
         <div class="editorial-header">
@@ -80,12 +74,12 @@ onMounted(fetchAll);
           <h2 class="mb-4 text-2xl font-black tracking-tight text-white">Approved Speakers <span class="text-base text-dc-gray">({{ speakers.length }})</span></h2>
           <p v-if="speakers.length === 0" class="py-8 text-center font-mono text-dc-gray-light">NO SPEAKERS ADDED YET</p>
           <div v-else class="space-y-3">
-            <div v-for="speaker in speakers" :key="speaker.id" class="group flex items-center justify-between rounded-md border border-dc-yellow/10 bg-dc-yellow/[0.03] p-4 transition-colors hover:border-dc-yellow/30">
+            <div v-for="speaker in speakers" :key="speaker.id" class="motion-colors group flex items-center justify-between rounded-md border border-dc-yellow/10 bg-dc-yellow/[0.03] p-4 hover:border-dc-yellow/30">
               <div>
                 <p class="font-mono font-bold text-white">{{ speaker.name }}</p>
                 <p class="font-mono text-sm text-dc-gray-light">{{ speaker.email }}</p>
               </div>
-              <button class="rounded-md border border-red-700/70 bg-red-900/40 px-4 py-2 font-mono text-sm uppercase text-red-200 transition-all hover:border-red-500 hover:bg-red-900/60" @click="removeExistingSpeaker(speaker.id)">REMOVE</button>
+              <button class="motion-press rounded-md border border-red-700/70 bg-red-900/40 px-4 py-2 font-mono text-sm uppercase text-red-200 hover:border-red-500 hover:bg-red-900/60" @click="removeExistingSpeaker(speaker.id)">REMOVE</button>
             </div>
           </div>
         </section>

@@ -112,25 +112,29 @@ onMounted(fetchEvents);
         </div>
 
         <div v-if="loading" class="py-12 text-center font-mono text-white">LOADING...</div>
-        <div v-else class="editorial-panel">
-          <div class="grid grid-cols-12 gap-4 border-b border-dc-yellow/10 bg-dc-dark-2/60 px-6 py-4">
-            <div class="col-span-4 font-mono text-xs font-bold uppercase text-dc-yellow">Event</div>
-            <div class="col-span-3 font-mono text-xs font-bold uppercase text-dc-yellow">Date</div>
-            <div class="col-span-3 font-mono text-xs font-bold uppercase text-dc-yellow">Status</div>
-            <div class="col-span-2 text-right font-mono text-xs font-bold uppercase text-dc-yellow">Actions</div>
-          </div>
-          <div class="divide-y-2 divide-dc-dark-3">
-            <div v-for="event in paginatedEvents" :key="event.id" class="grid grid-cols-12 gap-4 px-6 py-4 transition-colors hover:bg-dc-dark-2">
-              <div class="col-span-4">
-                <div class="font-mono font-medium text-white">{{ event.name }}</div>
-                <div v-if="event.description" class="mt-1 line-clamp-1 text-sm text-dc-gray-light">{{ event.description }}</div>
+        <div v-else class="editorial-panel overflow-hidden">
+          <div class="overflow-x-auto">
+            <div class="min-w-[760px]">
+              <div class="grid grid-cols-12 gap-4 border-b border-dc-yellow/10 bg-dc-dark-2/60 px-6 py-4">
+                <div class="col-span-4 font-mono text-xs font-bold uppercase text-dc-yellow">Event</div>
+                <div class="col-span-3 font-mono text-xs font-bold uppercase text-dc-yellow">Date</div>
+                <div class="col-span-3 font-mono text-xs font-bold uppercase text-dc-yellow">Status</div>
+                <div class="col-span-2 text-right font-mono text-xs font-bold uppercase text-dc-yellow">Actions</div>
               </div>
-              <div class="col-span-3 flex items-center font-mono text-sm text-white">{{ formatDate(event.event_date) }}</div>
-              <div class="col-span-3 flex items-center">
-                <span class="border px-2 py-1 font-mono text-xs font-bold uppercase" :class="statusClass(event.status)">{{ event.status.replace('_', ' ') }}</span>
-              </div>
-              <div class="col-span-2 flex items-center justify-end">
-                <RouterLink :to="adminPath(`events/${event.id}`)" class="font-mono text-sm font-bold uppercase text-dc-yellow hover:text-dc-yellow-glow">MANAGE &rarr;</RouterLink>
+              <div class="divide-y-2 divide-dc-dark-3">
+                <div v-for="event in paginatedEvents" :key="event.id" class="motion-colors grid grid-cols-12 gap-4 px-6 py-4 hover:bg-dc-dark-2">
+                  <div class="col-span-4">
+                    <div class="font-mono font-medium text-white">{{ event.name }}</div>
+                    <div v-if="event.description" class="mt-1 line-clamp-1 text-sm text-dc-gray-light">{{ event.description }}</div>
+                  </div>
+                  <div class="col-span-3 flex items-center font-mono text-sm text-white">{{ formatDate(event.event_date) }}</div>
+                  <div class="col-span-3 flex items-center">
+                    <span class="border px-2 py-1 font-mono text-xs font-bold uppercase" :class="statusClass(event.status)">{{ event.status.replace('_', ' ') }}</span>
+                  </div>
+                  <div class="col-span-2 flex items-center justify-end">
+                    <RouterLink :to="adminPath(`events/${event.id}`)" class="font-mono text-sm font-bold uppercase text-dc-yellow hover:text-dc-yellow-glow">MANAGE &rarr;</RouterLink>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -140,7 +144,7 @@ onMounted(fetchEvents);
             </p>
             <div class="flex items-center gap-2">
               <button
-                class="border border-dc-yellow/20 px-3 py-2 font-mono text-xs font-bold uppercase tracking-wide text-dc-gray-light transition-colors hover:border-dc-yellow/50 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                class="motion-press border border-dc-yellow/20 px-3 py-2 font-mono text-xs font-bold uppercase tracking-wide text-dc-gray-light hover:border-dc-yellow/50 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
                 :disabled="page === 1"
                 @click="goToPage(page - 1)"
               >
@@ -150,7 +154,7 @@ onMounted(fetchEvents);
                 {{ page }} / {{ pageCount }}
               </span>
               <button
-                class="border border-dc-yellow/20 px-3 py-2 font-mono text-xs font-bold uppercase tracking-wide text-dc-gray-light transition-colors hover:border-dc-yellow/50 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                class="motion-press border border-dc-yellow/20 px-3 py-2 font-mono text-xs font-bold uppercase tracking-wide text-dc-gray-light hover:border-dc-yellow/50 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
                 :disabled="page === pageCount"
                 @click="goToPage(page + 1)"
               >

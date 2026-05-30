@@ -10,10 +10,12 @@ import { createQuizParticipant, getQuizParticipantBySessionAndUser, getQuizParti
 import { createQuizSession, getAllQuizSessions, getQuizSessionByCode, getQuizSessionById, getQuizSessionsByEvent, updateQuizSession } from '@/lib/mock-db/quiz-sessions';
 import { createResponse, getResponseByQuestionAndUser, getResponsesByQuestion } from '@/lib/mock-db/responses';
 import { addSpeaker, getSpeakerByEmail, getSpeakersByEvent, removeSpeaker } from '@/lib/mock-db/speakers';
+import { getSupabaseAdminClient, isSupabaseServerConfigured } from '@/lib/supabase/server';
 import { createTalk, getAllTalks, getTalkById, getTalksByEvent, updateTalk } from '@/lib/mock-db/talks';
 import { createUser, getAllUsers, getUserByDeviceId, getUserById, updateUser } from '@/lib/mock-db/users';
 import { calculatePoints, calculateStreakBonus } from '@/lib/scoring';
 import { now } from '@/lib/utils';
+import { envValue } from '@/server/env';
 import type { Context } from 'hono';
 import type { GeneratedQuizFromPaperResponse, LeaderboardEntry, Question, QuizParticipant, QuizStateResponse, Response, User } from '@/types';
 
@@ -72,20 +74,16 @@ const STOP_WORDS = new Set([
   'would',
 ]);
 
-function envValue(key: string): string | undefined {
-  return typeof Bun === 'undefined' ? process.env[key] : Bun.env[key];
+function adminPassword(c: Context): string {
+  return envValue('ADMIN_PASSWORD', c) ?? 'devcon-admin';
 }
 
-function adminPassword(): string {
-  return envValue('ADMIN_PASSWORD') ?? 'devcon-admin';
-}
-
-function adminSessionToken(): string {
-  return envValue('ADMIN_SESSION_SECRET') ?? 'devcon-local-session';
+function adminSessionToken(c: Context): string {
+  return envValue('ADMIN_SESSION_SECRET', c) ?? 'devcon-local-session';
 }
 
 function isAdminRequest(c: Context): boolean {
-  return getCookie(c, ADMIN_SESSION_COOKIE) === adminSessionToken();
+  return getCookie(c, ADMIN_SESSION_COOKIE) === adminSessionToken(c);
 }
 
 function requireAdmin(c: Context): globalThis.Response | null {
@@ -103,6 +101,34 @@ app.get('/api/health', (c) => {
   });
 });
 
+app.get('/api/health/supabase', async (c) => {
+  if (!isSupabaseServerConfigured(c)) {
+    return c.json({
+      ok: false,
+      configured: false,
+      error: 'Supabase env is missing VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY',
+    }, 503);
+  }
+
+  const supabase = getSupabaseAdminClient(c);
+  const { error } = await supabase
+    .from('feedback_testers')
+    .select('id', { count: 'exact', head: true });
+
+  if (error) {
+    return c.json({
+      ok: false,
+      configured: true,
+      error: error.message,
+    }, 500);
+  }
+
+  return c.json({
+    ok: true,
+    configured: true,
+  });
+});
+
 app.get('/api/auth/session', (c) => {
   return c.json({
     authenticated: isAdminRequest(c),
@@ -112,14 +138,14 @@ app.get('/api/auth/session', (c) => {
 app.post('/api/auth/admin/login', async (c) => {
   const { password } = await c.req.json();
 
-  if (String(password ?? '') !== adminPassword()) {
+  if (String(password ?? '') !== adminPassword(c)) {
     return c.json({ error: 'Invalid admin password' }, 401);
   }
 
-  setCookie(c, ADMIN_SESSION_COOKIE, adminSessionToken(), {
+  setCookie(c, ADMIN_SESSION_COOKIE, adminSessionToken(c), {
     httpOnly: true,
     sameSite: 'Lax',
-    secure: envValue('NODE_ENV') === 'production',
+    secure: envValue('NODE_ENV', c) === 'production',
     path: '/',
     maxAge: 60 * 60 * 12,
   });

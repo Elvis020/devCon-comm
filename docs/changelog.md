@@ -5,6 +5,67 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 
 ---
 
+## 2026-05-30 — Supabase feedback foundation
+
+- Added Supabase JS client configuration with browser anon and server service-role helpers.
+- Loaded `.env.local` into the Hono dev server so server routes can access Supabase secrets locally.
+- Added environment placeholders for Supabase URL, anon key, and server-only service role key.
+- Added a Supabase migration for name-selected tester feedback without Supabase sessions or user auth.
+- Added `/api/health/supabase` to verify server-side Supabase connectivity.
+
+## 2026-05-30 — Temporary mode switch
+
+- Added a simple masthead switch for testing between the public community experience and the organizer console.
+
+## 2026-05-30 — Admin overview polish
+
+- Reworked the event overview operations area into a calmer program pulse and compact next-action rail.
+- Reduced the stretched metric-card feel so counts, status, and actions scan together on wide screens.
+- Replaced remaining native Vue dropdowns with the shared app-themed dropdown component across archive filters, event status, and quiz answer selection.
+- Fixed admin shell nav highlighting so only the deepest matching event section is marked active.
+- Removed redundant event back links from admin event child pages now covered by shell navigation.
+
+## 2026-05-29 — Quieter admin event overview
+
+- Replaced the dominant event lifecycle panel with a compact header status selector.
+- Added a calmer organizer overview for talk pipeline, speaker access, quiz state, and event-specific next actions.
+
+## 2026-05-29 — Editorial page scroll fix
+
+- Changed shared editorial pages to fill the available app shell height instead of forcing full viewport height inside the header-offset scroll area.
+- Removed the phantom vertical scrollbar on admin pages when content fits the visible area.
+- Added contextual admin shell navigation so event routes and the event list expose Overview, Talks, Speakers, Quiz, and Live links for the current/default event.
+- Removed duplicate in-page admin event tabs now that event operations live in the admin shell navigation.
+- Hid the admin Live nav item unless the selected/default event has a waiting or active quiz session.
+
+## 2026-05-29 — Live quiz nav visibility
+
+- Updated the app header to show the public `Play` navigation item only when `/api/quiz/active` reports a waiting or active quiz session.
+- Added periodic quiz availability refresh so the `Play` link can appear during a meetup without reloading the page.
+- Removed the redundant "Back to events" link from the admin event detail page because Events is already reachable from the admin navbar.
+
+## 2026-05-29 — Local Navii leaderboard avatars
+
+- Added `@usenavii/core` and a Vue `NaviiAvatar` component so leaderboard avatars render locally as deterministic data URI images.
+- Seeded avatars from stable leaderboard identifiers (`user_id`, `device_id`, then nickname/rank fallback) instead of using display names alone.
+- Added static 48px mascot avatars to leaderboard rows without enabling repeated avatar animation.
+
+## 2026-05-29 — Motion system pass
+
+- Switched the app motion standard to `$ui-animations` and added shared spring, smooth, and fast motion tokens.
+- Replaced active Vue `transition-all` usage with transform/opacity-only motion utilities for press, surface, icon, page, spinner, and quiz answer interactions.
+- Removed repeated decorative pulse motion, avoided layout-property transitions, and kept hover movement pointer-gated with reduced-motion fallbacks.
+
+## 2026-05-29 — Landing hero meetup photo
+
+- Replaced the single landing hero image with a three-photo automatic meetup stack.
+- Refined the meetup stack into a contact-sheet style zig-zag pile with paper borders, staggered rear prints, external captioning, and transform-only motion.
+- Simplified the automatic photo rotation so only the front print shifts to the back before the stack order advances.
+- Added a previous meetup photo to the landing hero's "Right now" feature panel.
+- Removed the redundant current-event summary from the photo panel so the hero only shows one meetup image.
+- Updated the hero photo caption to identify it as the April meetup.
+- Renamed the landing leaderboard eyebrow from "Community board" to "Community Kahoot board".
+
 ## 2026-05-29 — Configurable organizer route
 
 - Moved organizer-facing Vue routes from the predictable `/admin` prefix to a configurable `VITE_ADMIN_BASE_PATH`, defaulting to `/organizer-console`.
@@ -15,6 +76,24 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 
 - Added a Vue catch-all route for unknown client paths.
 - Added a branded 404 page with the missing path, quick recovery links, and organizer-aware primary navigation.
+- Removed the oversized hero glow so the 404 background stays quiet at wide viewport sizes.
+
+## 2026-05-29 — Softer interaction states
+
+- Reworked the app header into a compact app bar with grouped navigation and aligned status/actions.
+- Simplified the header into an editorial masthead with plain text navigation and subtle active underlines.
+- Removed the public "Community" header label; the masthead now only shows an organizer indicator on admin routes.
+- Removed the decorative nav group separator from the public masthead.
+- Reworked the public navigation active state from a solid yellow fill to a lighter tinted selection with subtler hover, press, and focus states.
+- Reduced the intensity of shared editorial action button hover/active states while preserving the yellow DevCon-Comm accent.
+- Removed the nav item hover lift that could clip the selected border inside the horizontal scroller.
+
+## 2026-05-29 — Archive redesign
+
+- Redesigned the public archive from a sparse timeline into event cards with clear titles, descriptions, topic chips, and talk previews.
+- Reworked year selection, summary metrics, and filters so desktop and mobile archive browsing are easier to scan.
+- Replaced native archive topic/speaker selects with app-themed custom dropdown popovers.
+- Removed the redundant "View issue" chip from archive cards because the full card already opens the event.
 
 ## 2026-05-29 — Softer admin UI polish
 

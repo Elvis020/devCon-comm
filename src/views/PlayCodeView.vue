@@ -149,13 +149,13 @@ onUnmounted(() => {
         <h1 class="mb-8 select-none text-9xl font-black leading-none text-dc-yellow/20 sm:text-[12rem]">404</h1>
         <h2 class="mb-4 text-3xl font-black text-white sm:text-4xl">Quiz Not <span class="text-dc-yellow">Found</span></h2>
         <p class="mb-8 text-lg text-dc-gray-light">{{ joinError }}</p>
-        <RouterLink to="/play" class="inline-block bg-dc-yellow px-8 py-4 font-bold uppercase tracking-wide text-dc-dark transition-all hover:shadow-glow">Try Another Code</RouterLink>
+        <RouterLink to="/play" class="motion-press inline-block bg-dc-yellow px-8 py-4 font-bold uppercase tracking-wide text-dc-dark hover:shadow-glow">Try Another Code</RouterLink>
       </div>
     </div>
 
     <div v-else-if="joining || !state" class="flex min-h-screen items-center justify-center p-4">
       <div class="text-center">
-        <div class="mb-4 inline-block size-20 animate-spin rounded-full border-4 border-dc-yellow border-t-transparent" />
+        <div class="motion-spinner mb-4 inline-block size-20 rounded-full border-4 border-dc-yellow border-t-transparent" />
         <p class="text-xl text-white">{{ joining ? 'Joining quiz...' : 'Connecting...' }}</p>
       </div>
     </div>
@@ -163,7 +163,7 @@ onUnmounted(() => {
     <div v-else-if="state.session.status === 'waiting' || state.session.status === 'draft'" class="flex min-h-screen items-center justify-center p-6">
       <div class="w-full max-w-sm text-center">
         <div class="relative mb-12">
-          <div class="mx-auto flex size-40 animate-pulse-glow items-center justify-center border-4 border-dc-yellow bg-dc-dark-1 shadow-glow">
+          <div class="mx-auto flex size-40 items-center justify-center border-4 border-dc-yellow bg-dc-dark-1 shadow-glow">
             <span class="font-mono text-6xl text-dc-yellow">...</span>
           </div>
         </div>
@@ -224,7 +224,7 @@ onUnmounted(() => {
 
     <div v-else class="flex min-h-screen flex-col bg-dc-dark">
       <div class="h-4 border-b-4 border-dc-dark-2 bg-dc-dark-3">
-        <div class="h-full transition-all duration-100" :class="progress > 50 ? 'bg-dc-yellow' : progress > 20 ? 'bg-orange-500' : 'bg-red-500'" :style="{ width: `${progress}%` }" />
+        <div class="h-full" :class="progress > 50 ? 'bg-dc-yellow' : progress > 20 ? 'bg-orange-500' : 'bg-red-500'" :style="{ width: `${progress}%` }" />
       </div>
 
       <div class="flex flex-1 flex-col justify-center p-4 pb-6">
@@ -245,7 +245,7 @@ onUnmounted(() => {
           <button
             v-for="(label, index) in ['A', 'B', 'C', 'D']"
             :key="label"
-            class="flex aspect-square min-h-[140px] items-center justify-center font-mono text-6xl font-bold text-white shadow-xl transition-all duration-200 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-40"
+            class="quiz-answer-tile flex aspect-square min-h-[140px] items-center justify-center font-mono text-6xl font-bold text-white shadow-xl disabled:cursor-not-allowed disabled:opacity-40"
             :class="[index === 0 ? 'bg-quiz-red' : index === 1 ? 'bg-quiz-blue' : index === 2 ? 'bg-quiz-yellow' : 'bg-quiz-green', selectedAnswer === index ? 'scale-95 ring-8 ring-white' : '']"
             :disabled="Boolean(state.player_result) || submitting || !state.current_question || index >= state.current_question.options.length"
             @click="submitAnswer(index)"

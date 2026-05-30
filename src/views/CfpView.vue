@@ -170,7 +170,7 @@ onMounted(async () => {
           <label class="editorial-label">Speaker Bio</label>
           <textarea v-model="form.bio" rows="3" class="editorial-input resize-none font-mono" />
         </div>
-        <button type="submit" :disabled="submitting" class="w-full bg-dc-yellow px-6 py-4 font-mono text-lg font-bold uppercase tracking-wide text-dc-dark transition-all hover:shadow-glow disabled:cursor-not-allowed disabled:opacity-50">
+        <button type="submit" :disabled="submitting" class="motion-press w-full bg-dc-yellow px-6 py-4 font-mono text-lg font-bold uppercase tracking-wide text-dc-dark hover:shadow-glow disabled:cursor-not-allowed disabled:opacity-50">
           {{ submitting ? 'SUBMITTING...' : 'SUBMIT PROPOSAL' }}
         </button>
       </form>

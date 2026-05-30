@@ -6,6 +6,9 @@
   :root {
     --font-sans: 'Satoshi';
     --font-mono: 'IBM Plex Mono';
+    --motion-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --motion-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+    --motion-fast: cubic-bezier(0.4, 0, 0.2, 1);
     --background: 0 0% 4%;
     --foreground: 0 0% 100%;
     --card: 0 0% 10%;
@@ -48,7 +51,7 @@
 
 @layer components {
   .editorial-page {
-    @apply min-h-screen bg-[#090908];
+    @apply min-h-full bg-[#090908];
   }
 
   .editorial-wrap {
@@ -76,26 +79,178 @@
   }
 
   .editorial-action {
-    @apply inline-flex items-center justify-center rounded-md bg-dc-yellow px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide text-dc-dark transition-all hover:-translate-y-0.5 hover:shadow-glow;
+    @apply inline-flex items-center justify-center rounded-md border border-dc-yellow/80 bg-dc-yellow/90 px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide text-dc-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dc-yellow/35;
+    transition:
+      transform 100ms var(--motion-fast),
+      opacity 150ms var(--motion-fast);
   }
 
   .editorial-secondary-action {
-    @apply inline-flex items-center justify-center rounded-md border border-dc-yellow/20 bg-dc-yellow/[0.03] px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide text-dc-yellow transition-all hover:border-dc-yellow/50 hover:bg-dc-yellow/10;
+    @apply inline-flex items-center justify-center rounded-md border border-dc-yellow/20 bg-dc-yellow/[0.03] px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide text-dc-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dc-yellow/30;
+    transition:
+      transform 100ms var(--motion-fast),
+      opacity 150ms var(--motion-fast);
   }
 
   .editorial-input {
-    @apply w-full rounded-md border border-dc-yellow/10 bg-[#20201f] px-4 py-3 text-white outline-none transition-colors placeholder:text-dc-gray focus:border-dc-yellow;
+    @apply w-full rounded-md border border-dc-yellow/10 bg-[#20201f] px-4 py-3 text-white outline-none placeholder:text-dc-gray focus:border-dc-yellow;
+    transition:
+      opacity 150ms var(--motion-fast),
+      transform 150ms var(--motion-fast);
   }
 
   .editorial-label {
     @apply mb-2 block font-mono text-xs font-bold uppercase tracking-wide text-dc-yellow;
   }
 
+  .meetup-contact-sheet {
+    position: relative;
+    isolation: isolate;
+    width: min(100%, 34rem);
+    margin-inline: auto;
+  }
+
+  .meetup-contact-sheet::before {
+    content: '';
+    position: absolute;
+    inset: 16% 8% -10%;
+    z-index: -1;
+    background: rgba(249, 225, 94, 0.08);
+    filter: blur(36px);
+  }
+
+  .meetup-photo-stack {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 1.1rem 0.85rem 3.8rem;
+    text-align: left;
+  }
+
+  .meetup-photo-spacer {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    border: 0.45rem solid transparent;
+    border-bottom-width: 1.05rem;
+  }
+
+  .meetup-photo-print {
+    position: absolute;
+    top: 1.1rem;
+    left: 0.85rem;
+    right: 0.85rem;
+    overflow: hidden;
+    border: 0.45rem solid #e7e2d1;
+    border-bottom-width: 1.05rem;
+    border-radius: 0.18rem;
+    background: #e7e2d1;
+    box-shadow:
+      0 18px 48px rgba(0, 0, 0, 0.36),
+      0 1px 0 rgba(255, 255, 255, 0.18) inset;
+    transform-origin: center top;
+    transition:
+      transform 420ms var(--motion-smooth),
+      opacity 360ms var(--motion-smooth),
+      filter 360ms var(--motion-smooth);
+    will-change: transform, opacity, filter;
+  }
+
+  .meetup-photo-print--front {
+    z-index: 30;
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+
+  .meetup-photo-print--middle {
+    z-index: 20;
+    opacity: 0.76;
+    filter: saturate(0.82) brightness(0.78);
+    transform: translate3d(-0.9rem, 1.35rem, 0) rotate(-2.4deg) scale(0.965);
+  }
+
+  .meetup-photo-print--back {
+    z-index: 10;
+    opacity: 0.5;
+    filter: saturate(0.68) brightness(0.68);
+    transform: translate3d(1rem, 2.75rem, 0) rotate(2.8deg) scale(0.93);
+  }
+
+  .meetup-photo-stack--shifting .meetup-photo-print--front {
+    animation: meetup-photo-shift-back 620ms var(--motion-smooth) both;
+  }
+
+  .meetup-photo-credit {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 0.85rem;
+    border-top: 1px solid rgba(249, 225, 94, 0.18);
+    padding-top: 0.85rem;
+    font-family: var(--font-mono), monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #f9e15e;
+  }
+
+  @media (min-width: 640px) {
+    .meetup-photo-stack {
+      padding: 1.25rem 1.1rem 4.2rem;
+    }
+
+    .meetup-photo-spacer {
+      border-width: 0.55rem;
+      border-bottom-width: 1.2rem;
+    }
+
+    .meetup-photo-print {
+      top: 1.25rem;
+      left: 1.1rem;
+      right: 1.1rem;
+      border-width: 0.55rem;
+      border-bottom-width: 1.2rem;
+    }
+
+    .meetup-photo-print--middle {
+      transform: translate3d(-1.3rem, 1.55rem, 0) rotate(-2.4deg) scale(0.965);
+    }
+
+    .meetup-photo-print--back {
+      transform: translate3d(1.45rem, 3.05rem, 0) rotate(2.8deg) scale(0.93);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .meetup-photo-print {
+      transition-duration: 1ms;
+    }
+
+    .meetup-photo-stack--shifting .meetup-photo-print--front {
+      animation: none;
+    }
+  }
+
+  @keyframes meetup-photo-shift-back {
+    0% {
+      opacity: 1;
+      filter: saturate(1) brightness(1);
+      transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+    }
+
+    100% {
+      opacity: 0.62;
+      filter: saturate(0.74) brightness(0.74);
+      transform: translate3d(1.45rem, 3.05rem, 0) rotate(2.8deg) scale(0.93);
+    }
+  }
+
   .page-enter-active,
   .page-leave-active {
     transition:
-      opacity 180ms cubic-bezier(0.16, 1, 0.3, 1),
-      transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+      opacity 180ms var(--motion-smooth),
+      transform 180ms var(--motion-smooth);
   }
 
   .page-enter-from {
@@ -106,5 +261,104 @@
   .page-leave-to {
     opacity: 0;
     transform: translateY(-4px);
+  }
+
+  .motion-colors {
+    transition:
+      opacity 150ms var(--motion-fast),
+      transform 150ms var(--motion-fast);
+  }
+
+  .motion-surface {
+    transition:
+      transform 200ms var(--motion-spring),
+      opacity 150ms var(--motion-fast);
+  }
+
+  .motion-press {
+    transition:
+      transform 100ms var(--motion-fast),
+      opacity 150ms var(--motion-fast);
+  }
+
+  .motion-press:active {
+    transform: scale(0.97);
+  }
+
+  .motion-icon {
+    transition: transform 150ms var(--motion-fast);
+  }
+
+  .motion-spinner {
+    animation: motion-spinner 850ms var(--motion-fast) infinite;
+  }
+
+  .quiz-answer-tile {
+    transition:
+      transform 160ms var(--motion-spring),
+      opacity 150ms var(--motion-fast);
+  }
+
+  .quiz-answer-tile:active {
+    transform: scale(0.97);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .editorial-action:hover {
+      border-color: #f9e15e;
+      background: #fff4c4;
+      box-shadow: 0 8px 24px rgba(249, 225, 94, 0.16);
+      transform: translate3d(0, -1px, 0);
+    }
+
+    .editorial-secondary-action:hover {
+      border-color: rgba(249, 225, 94, 0.4);
+      background: rgba(249, 225, 94, 0.08);
+      transform: translate3d(0, -1px, 0);
+    }
+
+    .motion-lift:hover {
+      transform: translate3d(0, -2px, 0);
+    }
+
+    .quiz-answer-tile:not(:disabled):hover {
+      transform: scale(1.03);
+    }
+  }
+
+  .editorial-action:active,
+  .editorial-secondary-action:active {
+    transform: scale(0.97);
+  }
+
+  @keyframes motion-spinner {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .page-enter-active,
+    .page-leave-active,
+    .motion-colors,
+    .motion-surface,
+    .motion-press,
+    .motion-icon,
+    .quiz-answer-tile,
+    .editorial-action,
+    .editorial-secondary-action {
+      transition-duration: 1ms !important;
+    }
+
+    .motion-spinner {
+      animation: none !important;
+    }
+
+    .motion-press:active,
+    .quiz-answer-tile:active,
+    .editorial-action:active,
+    .editorial-secondary-action:active {
+      transform: none;
+    }
   }
 }

@@ -109,7 +109,7 @@ function badge(status: string) {
             <label class="mb-2 block font-mono text-xs font-bold uppercase text-dc-yellow">Email Address</label>
             <input v-model="email" required type="email" placeholder="speaker@example.com" class="editorial-input font-mono" />
           </div>
-          <button type="submit" :disabled="loading" class="w-full bg-dc-yellow py-4 font-mono text-lg font-bold uppercase tracking-wide text-dc-dark transition-all hover:shadow-glow disabled:opacity-50">
+          <button type="submit" :disabled="loading" class="motion-press w-full bg-dc-yellow py-4 font-mono text-lg font-bold uppercase tracking-wide text-dc-dark hover:shadow-glow disabled:opacity-50">
             {{ loading ? 'CHECKING...' : 'VIEW MY TALKS' }}
           </button>
         </form>
@@ -173,7 +173,7 @@ function badge(status: string) {
                   <button class="border border-dc-dark-3 bg-dc-dark-2 px-4 py-2 font-mono text-sm text-white hover:border-dc-yellow/30" @click="uploadTalkId = talk.id; slidesUrl = slidesViewUrl(talk) ?? ''">UPDATE</button>
                 </div>
               </div>
-              <button v-else class="w-full bg-dc-yellow px-6 py-3 font-mono font-bold uppercase tracking-wide text-dc-dark transition-shadow hover:shadow-glow" @click="uploadTalkId = talk.id">
+              <button v-else class="motion-press w-full bg-dc-yellow px-6 py-3 font-mono font-bold uppercase tracking-wide text-dc-dark hover:shadow-glow" @click="uploadTalkId = talk.id">
                 UPLOAD SLIDES
               </button>
             </div>

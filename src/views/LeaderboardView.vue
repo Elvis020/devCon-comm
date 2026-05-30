@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
+import NaviiAvatar from '@/src/components/NaviiAvatar.vue';
 
 interface LeaderboardEntry {
   rank: number;
@@ -43,6 +44,10 @@ const pageCount = computed(() => Math.max(1, Math.ceil(leaderboard.value.length 
 const paginatedLeaderboard = computed(() => leaderboard.value.slice((page.value - 1) * pageSize, page.value * pageSize));
 const pageStart = computed(() => (leaderboard.value.length === 0 ? 0 : (page.value - 1) * pageSize + 1));
 const pageEnd = computed(() => Math.min(leaderboard.value.length, page.value * pageSize));
+
+function naviiSeed(entry: LeaderboardEntry): string {
+  return entry.user_id || entry.device_id || `${entry.nickname}-${entry.rank}`;
+}
 
 async function fetchData() {
   loading.value = true;
@@ -147,9 +152,9 @@ async function submitMerge() {
 }
 
 function rankLabel(rank: number): string {
-  if (rank === 1) return 'Champion';
-  if (rank === 2) return 'Runner-up';
-  if (rank === 3) return 'Third place';
+  if (rank === 1) return '🥇';
+  if (rank === 2) return '🥈';
+  if (rank === 3) return '🥉';
   return `#${rank}`;
 }
 
@@ -184,14 +189,14 @@ onUnmounted(() => {
         >
           <div class="flex flex-wrap gap-3">
             <button
-              class="rounded-md border px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide transition-colors"
+              class="motion-press rounded-md border px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide"
               :class="leaderboardMode === 'all-time' ? 'border-dc-yellow bg-dc-yellow text-dc-dark' : 'border-dc-yellow/20 text-dc-gray-light hover:border-dc-yellow/50 hover:text-white'"
               @click="setMode('all-time')"
             >
               All Time
             </button>
             <button
-              class="rounded-md border px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide transition-colors"
+              class="motion-press rounded-md border px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide"
               :class="leaderboardMode === 'monthly' ? 'border-dc-yellow bg-dc-yellow text-dc-dark' : 'border-dc-yellow/20 text-dc-gray-light hover:border-dc-yellow/50 hover:text-white'"
               @click="setMode('monthly')"
             >
@@ -202,7 +207,7 @@ onUnmounted(() => {
 
         <div v-if="loading" class="flex min-h-[40vh] items-center justify-center">
           <div class="text-center">
-            <div class="mb-4 inline-block size-16 animate-spin rounded-full border-4 border-dc-yellow border-t-transparent" />
+            <div class="motion-spinner mb-4 inline-block size-16 rounded-full border-4 border-dc-yellow border-t-transparent" />
             <p class="text-lg text-white">Loading...</p>
           </div>
         </div>
@@ -219,25 +224,25 @@ onUnmounted(() => {
             <div
             v-for="entry in paginatedLeaderboard"
               :key="entry.rank"
-              class="grid grid-cols-12 gap-4 px-6 py-4 transition-colors"
+              class="motion-colors grid grid-cols-12 gap-4 px-6 py-4"
               :class="entry.rank <= 3 ? 'bg-dc-yellow/5 hover:bg-dc-yellow/10' : 'hover:bg-dc-dark-2'"
             >
               <div class="col-span-2 flex items-center gap-2">
-                <span class="text-2xl font-bold" :class="entry.rank <= 3 ? 'text-dc-yellow' : 'text-dc-gray'">
+                <span class="font-mono text-2xl font-bold" :class="entry.rank <= 3 ? 'text-3xl text-dc-yellow' : 'text-dc-gray'">
                   {{ rankLabel(entry.rank) }}
                 </span>
               </div>
 
-              <div class="col-span-6 flex flex-col justify-center">
-                <div class="text-lg font-bold" :class="entry.rank <= 3 ? 'text-dc-yellow' : 'text-white'">
-                  {{ entry.nickname }}
-                  <span v-if="entry.is_claimed" class="ml-2 align-middle font-mono text-xs font-bold uppercase tracking-wide text-green-300">claimed</span>
-                </div>
-                <div v-if="entry.user_id" class="mt-1 font-mono text-xs text-dc-gray">
-                  ID: {{ entry.user_id }}
-                </div>
-                <div v-if="entry.events_participated" class="mt-1 text-sm text-dc-gray">
-                  {{ entry.events_participated }} {{ entry.events_participated === 1 ? 'event' : 'events' }}
+              <div class="col-span-6 flex min-w-0 items-center gap-4">
+                <NaviiAvatar :seed="naviiSeed(entry)" :title="`${entry.nickname} avatar`" :size="48" />
+                <div class="min-w-0">
+                  <div class="truncate text-lg font-bold" :class="entry.rank <= 3 ? 'text-dc-yellow' : 'text-white'">
+                    {{ entry.nickname }}
+                    <span v-if="entry.is_claimed" class="ml-2 align-middle font-mono text-xs font-bold uppercase tracking-wide text-green-300">claimed</span>
+                  </div>
+                  <div v-if="entry.events_participated" class="mt-1 text-sm text-dc-gray">
+                    {{ entry.events_participated }} {{ entry.events_participated === 1 ? 'event' : 'events' }}
+                  </div>
                 </div>
               </div>
 
@@ -260,7 +265,7 @@ onUnmounted(() => {
             </p>
             <div class="flex items-center gap-2">
               <button
-                class="rounded-md border border-dc-yellow/20 px-3 py-2 font-mono text-xs font-bold uppercase tracking-wide text-dc-gray-light transition-colors hover:border-dc-yellow/50 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                class="motion-press rounded-md border border-dc-yellow/20 px-3 py-2 font-mono text-xs font-bold uppercase tracking-wide text-dc-gray-light hover:border-dc-yellow/50 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
                 :disabled="page === 1"
                 @click="goToPage(page - 1)"
               >
@@ -270,7 +275,7 @@ onUnmounted(() => {
                 {{ page }} / {{ pageCount }}
               </span>
               <button
-                class="rounded-md border border-dc-yellow/20 px-3 py-2 font-mono text-xs font-bold uppercase tracking-wide text-dc-gray-light transition-colors hover:border-dc-yellow/50 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                class="motion-press rounded-md border border-dc-yellow/20 px-3 py-2 font-mono text-xs font-bold uppercase tracking-wide text-dc-gray-light hover:border-dc-yellow/50 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
                 :disabled="page === pageCount"
                 @click="goToPage(page + 1)"
               >

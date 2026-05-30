@@ -4,6 +4,16 @@
 
 ---
 
+## ADR-009: Name-Selected Feedback Without Supabase Sessions
+
+**Date:** 2026-05-30
+**Why:** Testers should be able to submit feedback quickly during app testing without account creation, magic links, or session state. A curated tester-name list is enough context for this feedback loop and avoids blocking early product iteration on auth design.
+**Tradeoffs:** Tester identity is not cryptographically verified, so someone can submit feedback under another tester's display name. This is acceptable for a small trusted testing group, but not for production abuse-resistant reporting.
+**Alternatives considered:** Supabase Auth sessions for testers (too much friction for the current testing loop), anonymous session IDs (unnecessary because the user explicitly wants testers to select their names), external forms (fast but lose app route/browser context).
+**Revisit when:** Feedback is opened beyond a trusted tester group, or when the app's broader Supabase Auth model is introduced.
+
+---
+
 ## ADR-008: Same-Origin Prototype Admin Session
 
 **Date:** 2026-05-29

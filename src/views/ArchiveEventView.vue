@@ -57,7 +57,7 @@ onMounted(async () => {
 <template>
   <div class="editorial-page">
     <div class="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
-      <RouterLink to="/archive" class="mb-10 inline-flex items-center gap-2 font-mono text-sm text-dc-yellow transition-colors hover:text-dc-yellow-glow">
+      <RouterLink to="/archive" class="motion-colors mb-10 inline-flex items-center gap-2 font-mono text-sm text-dc-yellow hover:text-dc-yellow-glow">
         <span>&larr;</span> BACK TO ARCHIVE
       </RouterLink>
 
@@ -128,7 +128,7 @@ onMounted(async () => {
                 :href="slidesUrl(talk) ?? undefined"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="inline-flex rounded-md border border-dc-yellow/20 bg-dc-yellow/[0.03] px-4 py-2 font-mono text-sm font-bold uppercase tracking-wide text-dc-yellow transition-colors hover:border-dc-yellow/50 hover:bg-dc-yellow/10"
+                class="motion-press inline-flex rounded-md border border-dc-yellow/20 bg-dc-yellow/[0.03] px-4 py-2 font-mono text-sm font-bold uppercase tracking-wide text-dc-yellow hover:border-dc-yellow/50 hover:bg-dc-yellow/10"
               >
                 Slides &rarr;
               </a>

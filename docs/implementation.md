@@ -11,9 +11,12 @@
 | `src/views/DashboardView.vue` | DEV::CON[] landing page backed by current mock data |
 | `src/views/ArchiveView.vue` / `ArchiveEventView.vue` | Public archive and talk detail surfaces |
 | `src/views/CfpView.vue` / `MyTalksView.vue` | Speaker CFP and slide management flows |
+| `src/components/NaviiAvatar.vue` | Local deterministic Navii avatar renderer for leaderboard profiles |
 | `src/views/PlayView.vue` / `PlayCodeView.vue` | Quiz join and live player gameplay |
 | `src/views/NotFoundView.vue` | Branded fallback for unknown Vue routes |
 | `src/views/admin/*` | Active admin event/talk/speaker/quiz management views |
+| `lib/supabase/browser.ts` / `server.ts` | Typed Supabase clients for browser-safe anon access and server-only service-role access |
+| `supabase/migrations/*` | Supabase SQL migrations, starting with tester feedback tables |
 | `server/app.ts` | Hono app — active API routes plus dev SPA fallback |
 | `server/index.ts` | Bun production server — serves `dist/` and `/api/*` on one port |
 | `vite.config.ts` | Vite + Vue + Hono dev-server wiring |
@@ -52,6 +55,16 @@
 - **Non-obvious logic:** The write queue chains promises per file key — concurrent writes to `events` and `sessions` can overlap, but concurrent writes to the same file are serialized. Reads are unguarded (last-write-wins on read-during-write).
 - Each entity module (`events.ts`, `talks.ts`, etc.) exports typed helpers like `getAll*`, `get*ById`, `create*`, `update*`.
 
+### Supabase (`lib/supabase/`, `supabase/`)
+
+- `lib/supabase/browser.ts` exports a browser client using `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; auth session persistence is disabled because tester feedback does not use Supabase Auth.
+- `lib/supabase/server.ts` exports a server/admin client using `VITE_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`; keep the service key server-only.
+- `vite.config.ts` loads `.env.local` and injects it into the Hono dev server so local server routes can read Supabase secrets.
+- `types/supabase.ts` currently types the feedback tables by hand until generated Supabase types are introduced.
+- `supabase/migrations/20260530000000_feedback.sql` creates `feedback_testers` for selectable tester names and `feedback_submissions` for feedback rows.
+- Row-level security allows public reads of active tester names and public inserts of new feedback, but not public reads of submitted feedback.
+- `/api/health/supabase` verifies that server-side Supabase config is present and that the feedback tester table is reachable.
+
 ### Hono Server (`server/`)
 
 - **Entry points:**
@@ -59,6 +72,7 @@
   - `server/index.ts` starts Bun in production, serving `/api/*` through Hono and all other paths from `dist/`.
 - **Current active APIs:**
   - `/api/health`
+  - `/api/health/supabase`
   - `/api/auth/session`, `/api/auth/admin/login`, `/api/auth/logout`
   - `/api/overview`
   - `/api/events`
@@ -69,7 +83,7 @@
 ### Vue App (`src/`)
 
 - `src/main.ts` mounts Vue, Pinia, and Vue Router.
-- `src/App.vue` provides the active shell/nav.
+- `src/App.vue` provides the active shell/nav and polls `/api/quiz/active` so the public `Play` link appears only while a quiz session is waiting or active.
 - `src/views/DashboardView.vue` renders the community hub: featured event/CFP, live quiz join, recent talks, and top members from `/api/overview`.
 - `src/views/ArchiveView.vue` filters completed events by year, query, topic, and speaker.
 - `src/views/NotFoundView.vue` is mounted by the final Vue Router catch-all route for unknown client paths.
@@ -121,6 +135,9 @@
 | `REVEALING_DURATION_MS` | `5000` | Time players see correct answer + distribution |
 | `SCOREBOARD_DURATION_MS` | `5000` | Time players see leaderboard between questions |
 | `STREAK_BONUSES` | `{2:100, 3:200, 4:300, 5:500}` | Bonus points per consecutive correct streak |
+| `VITE_SUPABASE_URL` | unset | Supabase project URL for browser and server clients |
+| `VITE_SUPABASE_ANON_KEY` | unset | Browser-safe Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | unset | Server-only Supabase service role key for trusted admin operations |
 
 All constants are in `lib/constants.ts`.
 

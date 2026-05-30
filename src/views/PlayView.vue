@@ -64,7 +64,7 @@ async function joinQuiz() {
     />
 
     <div v-if="quizAvailable === null" class="relative text-center">
-      <div class="mb-4 inline-block size-16 animate-spin rounded-full border-4 border-dc-yellow border-t-transparent" />
+      <div class="motion-spinner mb-4 inline-block size-16 rounded-full border-4 border-dc-yellow border-t-transparent" />
       <p class="text-lg text-white">Loading...</p>
     </div>
 
@@ -73,7 +73,7 @@ async function joinQuiz() {
       <h2 class="mb-4 text-3xl font-black text-white sm:text-4xl">Page Not <span class="text-dc-yellow">Found</span></h2>
       <p class="mb-2 text-lg text-dc-gray-light">This page is only available when there's an active quiz session.</p>
       <p class="mb-8 text-sm text-dc-gray">The host hasn't started a quiz yet. Come back when the game is live.</p>
-      <RouterLink to="/" class="inline-block bg-dc-yellow px-8 py-4 font-bold uppercase tracking-wide text-dc-dark transition-all hover:shadow-glow">
+      <RouterLink to="/" class="motion-press inline-block bg-dc-yellow px-8 py-4 font-bold uppercase tracking-wide text-dc-dark hover:shadow-glow">
         Back to Home
       </RouterLink>
     </div>
@@ -94,16 +94,16 @@ async function joinQuiz() {
         <form class="space-y-6" @submit.prevent="joinQuiz">
           <div>
             <label class="mb-2 block font-mono text-xs font-bold uppercase text-dc-yellow">Quiz Code</label>
-            <input v-model="joinCode" required maxlength="6" placeholder="ABC123" class="w-full border-2 border-dc-dark-3 bg-dc-dark-2 px-4 py-4 text-center font-mono text-3xl font-bold uppercase tracking-widest text-white outline-none transition-colors focus:border-dc-yellow" @input="joinCode = joinCode.toUpperCase()" />
+            <input v-model="joinCode" required maxlength="6" placeholder="ABC123" class="motion-colors w-full border-2 border-dc-dark-3 bg-dc-dark-2 px-4 py-4 text-center font-mono text-3xl font-bold uppercase tracking-widest text-white outline-none focus:border-dc-yellow" @input="joinCode = joinCode.toUpperCase()" />
           </div>
           <div>
             <label class="mb-2 block font-mono text-xs font-bold uppercase text-dc-yellow">Your Nickname</label>
-            <input v-model="nickname" required maxlength="20" placeholder="QuizMaster" class="w-full border-2 border-dc-dark-3 bg-dc-dark-2 px-4 py-3 font-mono text-white outline-none transition-colors focus:border-dc-yellow" />
+            <input v-model="nickname" required maxlength="20" placeholder="QuizMaster" class="motion-colors w-full border-2 border-dc-dark-3 bg-dc-dark-2 px-4 py-3 font-mono text-white outline-none focus:border-dc-yellow" />
           </div>
           <div v-if="error" class="border-2 border-red-500 bg-red-900/30 p-4">
             <p class="font-mono text-sm text-red-400">{{ error }}</p>
           </div>
-          <button type="submit" :disabled="joining || !joinCode || !nickname" class="group relative w-full overflow-hidden bg-dc-yellow py-4 font-mono text-lg font-bold uppercase tracking-wide text-dc-dark transition-all hover:shadow-glow disabled:cursor-not-allowed disabled:opacity-50">
+          <button type="submit" :disabled="joining || !joinCode || !nickname" class="motion-press group relative w-full overflow-hidden bg-dc-yellow py-4 font-mono text-lg font-bold uppercase tracking-wide text-dc-dark hover:shadow-glow disabled:cursor-not-allowed disabled:opacity-50">
             {{ joining ? 'JOINING...' : 'ENTER QUIZ' }}
           </button>
         </form>

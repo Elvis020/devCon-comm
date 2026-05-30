@@ -15,7 +15,9 @@
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.7",
     "@hono/vite-dev-server": "^0.26.0",
+    "@supabase/supabase-js": "^2.106.2",
     "@types/qrcode": "^1.5.6",
+    "@usenavii/core": "^0.6.0",
     "@vitejs/plugin-vue": "^5.2.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

@@ -2,8 +2,8 @@
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import QRCode from 'qrcode';
+import AppDropdown from '@/src/components/AppDropdown.vue';
 import type { GeneratedQuizFromPaperSummary, Question, QuizSession } from '@/types';
-import AdminEventTabs from '@/src/components/AdminEventTabs.vue';
 import { adminPath } from '@/src/admin-routes';
 
 type SessionWithQuestions = QuizSession & { questions: Question[]; participantCount: number };
@@ -45,6 +45,12 @@ const paperError = ref('');
 const paperSuccess = ref('');
 const paperSummary = ref<GeneratedQuizFromPaperSummary | null>(null);
 const PAPER_FILE_MAX_BYTES = 8 * 1024 * 1024;
+const correctAnswerOptions = [
+  { value: 0, label: 'A correct' },
+  { value: 1, label: 'B correct' },
+  { value: 2, label: 'C correct' },
+  { value: 3, label: 'D correct' },
+];
 
 const liveMode = computed(() => route.path.endsWith('/live'));
 const playUrl = computed(() => {
@@ -311,17 +317,12 @@ onUnmounted(() => {
 <template>
   <div class="editorial-page">
     <div class="editorial-wrap">
-      <RouterLink :to="adminPath(`events/${route.params.eventId}`)" class="mb-6 inline-flex items-center gap-2 font-mono text-dc-yellow hover:text-dc-yellow-glow">
-        <span>&larr;</span> BACK TO EVENT
-      </RouterLink>
-      <AdminEventTabs :event-id="String(route.params.eventId)" />
-
       <div v-if="loading" class="py-12 text-center font-mono text-white">LOADING...</div>
 
       <div v-else-if="!session" class="editorial-panel relative overflow-hidden p-12 text-center">
         <div class="absolute right-0 top-0 size-16 border-b-2 border-l-2 border-dc-yellow/20" />
         <p class="mb-8 font-mono text-dc-gray">No quiz has been created for this event yet.</p>
-        <button class="bg-dc-yellow px-8 py-4 font-bold uppercase tracking-wide text-dc-dark transition-shadow hover:shadow-glow" @click="createSession">Create Quiz</button>
+        <button class="motion-press bg-dc-yellow px-8 py-4 font-bold uppercase tracking-wide text-dc-dark hover:shadow-glow" @click="createSession">Create Quiz</button>
       </div>
 
       <template v-else-if="liveMode">
@@ -330,7 +331,7 @@ onUnmounted(() => {
             <h1 class="mb-12 font-mono text-6xl font-bold uppercase tracking-tight text-white sm:text-7xl"><span class="text-dc-yellow">$</span> JOIN_THE_QUIZ</h1>
             <div class="mb-10 inline-block border-4 border-dc-yellow bg-dc-dark-1 p-10 shadow-glow">
               <p class="mb-3 font-mono text-xl uppercase tracking-wide text-dc-gray-light">Join Code:</p>
-              <p class="animate-pulse-glow font-mono text-8xl font-bold tracking-widest text-dc-yellow">{{ session.join_code }}</p>
+              <p class="font-mono text-8xl font-bold tracking-widest text-dc-yellow">{{ session.join_code }}</p>
             </div>
             <div v-if="qrCodeUrl" class="mx-auto mb-10 grid max-w-3xl gap-6 md:grid-cols-[280px_1fr] md:items-center md:text-left">
               <img :src="qrCodeUrl" alt="Quiz join QR code" class="mx-auto size-[280px] border-4 border-dc-yellow bg-dc-yellow p-3 shadow-glow" />
@@ -343,7 +344,7 @@ onUnmounted(() => {
               <span class="font-bold text-dc-yellow">{{ liveState?.participants_count ?? session.participantCount }}</span>
               <span class="uppercase text-dc-gray-light"> players joined</span>
             </div>
-            <button class="bg-dc-yellow px-16 py-6 font-mono text-3xl font-bold uppercase tracking-wide text-dc-dark transition-all hover:shadow-glow-lg" :disabled="(liveState?.participants_count ?? session.participantCount) === 0" @click="startQuiz">START QUIZ</button>
+            <button class="motion-press bg-dc-yellow px-16 py-6 font-mono text-3xl font-bold uppercase tracking-wide text-dc-dark hover:shadow-glow-lg" :disabled="(liveState?.participants_count ?? session.participantCount) === 0" @click="startQuiz">START QUIZ</button>
           </div>
         </div>
 
@@ -433,7 +434,11 @@ onUnmounted(() => {
             <input v-for="(_, index) in form.options" :key="index" v-model="form.options[index]" required :placeholder="`Option ${index + 1}`" class="editorial-input" />
           </div>
           <div class="grid gap-3 sm:grid-cols-3">
-            <select v-model="form.correct_index" class="border-2 border-dc-dark-3 bg-dc-dark-2 px-4 py-3 text-white"><option :value="0">A correct</option><option :value="1">B correct</option><option :value="2">C correct</option><option :value="3">D correct</option></select>
+            <AppDropdown
+              :model-value="form.correct_index"
+              :options="correctAnswerOptions"
+              @update:model-value="form.correct_index = Number($event)"
+            />
             <input v-model="form.time_limit_seconds" type="number" min="5" class="border-2 border-dc-dark-3 bg-dc-dark-2 px-4 py-3 text-white" />
             <input v-model="form.points" type="number" min="100" class="border-2 border-dc-dark-3 bg-dc-dark-2 px-4 py-3 text-white" />
           </div>
@@ -455,7 +460,11 @@ onUnmounted(() => {
                 <input v-for="(_, optionIndex) in editForm.options" :key="optionIndex" v-model="editForm.options[optionIndex]" required :placeholder="`Option ${optionIndex + 1}`" class="editorial-input" />
               </div>
               <div class="grid gap-3 sm:grid-cols-3">
-                <select v-model="editForm.correct_index" class="border-2 border-dc-dark-3 bg-dc-dark-2 px-4 py-3 text-white"><option :value="0">A correct</option><option :value="1">B correct</option><option :value="2">C correct</option><option :value="3">D correct</option></select>
+                <AppDropdown
+                  :model-value="editForm.correct_index"
+                  :options="correctAnswerOptions"
+                  @update:model-value="editForm.correct_index = Number($event)"
+                />
                 <input v-model="editForm.time_limit_seconds" type="number" min="5" class="border-2 border-dc-dark-3 bg-dc-dark-2 px-4 py-3 text-white" />
                 <input v-model="editForm.points" type="number" min="100" class="border-2 border-dc-dark-3 bg-dc-dark-2 px-4 py-3 text-white" />
               </div>
