@@ -103,6 +103,51 @@ Tradeoffs:
 
 Best for: the public website integration plus low-cost community operations.
 
+### Cloudflare Phase-One Deploy Steps
+
+Deploy the frontend first with Cloudflare Pages:
+
+| Setting | Value |
+|---|---|
+| Framework preset | `None` |
+| Build command | `pnpm build` |
+| Build output directory | `dist` |
+| Root directory | `/` |
+
+Pages environment variables:
+
+| Variable | Value |
+|---|---|
+| `VITE_SUPABASE_URL` | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anon key |
+| `VITE_ADMIN_BASE_PATH` | Organizer base path, for example `/organizer-console` |
+| `VITE_SHOW_ORGANIZER_LINK` | `true` or `false` |
+| `VITE_API_BASE_URL` | Worker URL, for example `https://devcongress-comm-api.<account>.workers.dev` |
+
+Deploy the API Worker separately:
+
+```bash
+pnpm install
+pnpm deploy:worker
+```
+
+Worker secrets and variables:
+
+```bash
+npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+npx wrangler secret put ADMIN_PASSWORD
+npx wrangler secret put ADMIN_SESSION_SECRET
+npx wrangler secret put VITE_SUPABASE_URL
+npx wrangler secret put PUBLIC_APP_URL
+npx wrangler secret put PUBLIC_FRONTEND_ORIGIN
+```
+
+Use the service-role key only on the Worker. Do not add `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_PASSWORD`, or `ADMIN_SESSION_SECRET` to Cloudflare Pages environment variables.
+
+For the first Pages deploy, set `VITE_API_BASE_URL` to the Worker `workers.dev` URL so browser calls to `/api/*` are rewritten to the Worker. Set `PUBLIC_FRONTEND_ORIGIN` on the Worker to the exact Pages origin, such as `https://devcongress-community.pages.dev`, so credentialed admin requests can pass CORS. Once a custom domain exists, route `devcongress-community.example.com/api/*` to the Worker and remove `VITE_API_BASE_URL` if same-origin API calls are preferred.
+
+Leave `ENABLE_PDF_QUIZ_UPLOADS` unset on Cloudflare Workers during phase one. The PDF-to-quiz prototype depends on a PDF parser that expects browser matrix APIs not available in Workers, and quiz generation is intentionally deferred for the low-cost launch.
+
 ### Option B: Cloudflare Pages + Supabase Edge Functions
 
 Viable, but not the default.

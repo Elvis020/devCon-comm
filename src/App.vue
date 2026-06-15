@@ -23,6 +23,7 @@ const quizAvailable = ref(false);
 const adminEventNames = ref<Record<string, string>>({});
 const routeTransitionName = ref('page');
 const logoSrc = '/brand/dev-con-logo.png';
+const showOrganizerLink = import.meta.env.VITE_SHOW_ORGANIZER_LINK !== 'false';
 let quizAvailabilityInterval: number | undefined;
 
 const publicLinks: NavLink[] = [
@@ -67,6 +68,9 @@ const navGroups = computed(() => {
 });
 const modeSwitchLink = computed(() => (isAdminRoute.value ? '/' : adminPath('events')));
 const modeSwitchLabel = computed(() => (isAdminRoute.value ? 'Community' : 'Organizer'));
+const showModeSwitch = computed(() => isAdminRoute.value || showOrganizerLink);
+const showSignOut = computed(() => isAdminRoute.value && route.path !== adminPath('login'));
+const showHeaderActions = computed(() => showModeSwitch.value || showSignOut.value);
 const adminReturnSource = computed(() => {
   const value = route.query.from;
   if (value === 'attendance' || value === 'feedback') return value;
@@ -284,16 +288,17 @@ onUnmounted(() => {
           >
         </RouterLink>
 
-        <div class="flex items-center justify-end gap-3 lg:order-3">
-          <span class="hidden h-8 w-px rounded-full bg-dc-ink/30 sm:block" />
+        <div v-if="showHeaderActions" class="flex items-center justify-end gap-3 lg:order-3">
+          <span v-if="showModeSwitch || showSignOut" class="hidden h-8 w-px rounded-full bg-dc-ink/30 sm:block" />
           <RouterLink
+            v-if="showModeSwitch"
             :to="modeSwitchLink"
             class="motion-press rounded-md border-2 border-dc-ink bg-dc-paper px-3 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-dc-ink shadow-[2px_2px_0_#111111] hover:bg-dc-yellow"
           >
             {{ modeSwitchLabel }}
           </RouterLink>
           <button
-            v-if="isAdminRoute && route.path !== adminPath('login')"
+            v-if="showSignOut"
             class="motion-press rounded-md border-2 border-dc-ink bg-dc-paper px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider text-dc-ink shadow-[2px_2px_0_#111111] hover:bg-dc-yellow"
             @click="logout"
           >

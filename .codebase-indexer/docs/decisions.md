@@ -4,6 +4,15 @@
 
 ---
 
+## ADR-012: Explicit Quiz Phase Advance Command
+**Date:** 2026-06-15
+**Why:** Quiz polling still needs server-authoritative phase transitions, but mutating session state inside `GET /api/quiz/state` hid writes behind a read endpoint. Moving the transition check to `POST /api/quiz/state/advance` makes the mutation explicit and easier to replace later with a job, Durable Object, or realtime state machine.
+**Why (inferred):** User requested reducing quiz-state mutation debt; current docs and code showed GET-driven phase mutation as a known production-readiness issue.
+**Tradeoffs:** Polling clients now make one extra request before reading state, and this remains a bridge rather than a production realtime architecture.
+**Alternatives considered:** Keep GET mutation; move immediately to Supabase Realtime or Durable Objects; require manual organizer advancement.
+
+---
+
 ## ADR-010: Align Public App Surfaces With DevCongress.org Light Theme
 **Date:** 2026-06-13
 **Why:** Public-facing app surfaces should feel like a continuation of `devcongress.org`; use warm cream, black ink, DevCongress yellow, and pink accents.

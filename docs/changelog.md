@@ -5,11 +5,24 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 
 ---
 
+## 2026-06-15 — Cloudflare Worker API deploy path
+
+- Added a Cloudflare Worker entrypoint for the Hono API with Wrangler config and a `pnpm deploy:worker` script.
+- Added `VITE_API_BASE_URL` support so the Cloudflare Pages frontend can call a separate Worker API origin before same-domain `/api/*` routing exists.
+- Added credentialed API CORS support for split Pages/Worker origins, controlled by `PUBLIC_FRONTEND_ORIGIN`.
+- Deferred hosted PDF-to-quiz generation behind `ENABLE_PDF_QUIZ_UPLOADS` and removed the PDF parser from the Worker top-level import path so Cloudflare can validate the API bundle.
+- Documented the split Cloudflare Pages + Worker deploy steps and clarified that server-only secrets belong on the Worker, not in the Pages frontend environment.
+
 ## 2026-06-15 — Open-source documentation foundation
 
 - Added a concise open-source README that explains the product, quick start, documentation map, project status, stack, contribution path, security posture, and license without overcrowding the landing page.
 - Added root contribution, security, code-of-conduct, and MIT license files for public collaboration readiness.
 - Added structured contributor docs under user guides, technical docs, reference docs, and feature docs so community members, organizers, integrators, and maintainers can enter at the right level of detail.
+- Added a technical debt register and linked it from the README and documentation map so open-source contributors can see production-readiness risks without crowding the README.
+- Added `VITE_SHOW_ORGANIZER_LINK` so public deployments can hide the Organizer header button without changing route or auth behavior.
+- Hardened JSON mock persistence so missing files still behave as empty collections, invalid/non-array JSON fails loudly, and writes replace files through temp-file rename.
+- Moved quiz phase advancement out of `GET /api/quiz/state` into explicit `POST /api/quiz/state/advance`, with shared quiz-state helpers and focused tests.
+- Added focused tests for mock DB persistence, Luma attendance parsing/summarization, and quiz state advancement/read behavior.
 
 ## 2026-06-15 — Browser metadata polish
 

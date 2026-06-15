@@ -73,6 +73,12 @@ function submitNickname() {
 async function pollState() {
   if (!sessionId.value || !userId.value) return;
 
+  await fetch('/api/quiz/state/advance', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId.value }),
+  });
+
   const response = await fetch(`/api/quiz/state?sessionId=${sessionId.value}&userId=${userId.value}`);
   if (response.ok) {
     state.value = await response.json();

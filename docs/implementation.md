@@ -21,6 +21,7 @@
 | `src/views/NotFoundView.vue` | Branded fallback for unknown Vue routes |
 | `src/views/admin/*` | Active admin event/talk/speaker/quiz management views |
 | `lib/luma-attendance.ts` | Luma guest CSV normalization and organizer attendance metrics |
+| `server/quiz-state.ts` | Quiz state read model and explicit phase-advance command helper |
 | `lib/supabase/browser.ts` / `server.ts` | Typed Supabase clients for browser-safe anon access and server-only service-role access |
 | `lib/supabase/community-events.ts` | Supabase-backed community event repository and public meetup DTO mapper |
 | `lib/supabase/media.ts` | Server-side Supabase Storage upload helper for meetup covers and selected event photos |
@@ -49,7 +50,7 @@
   - Active Vue pages: `src/views/admin/AdminQuizView.vue`, `src/views/PlayView.vue`, `src/views/PlayCodeView.vue`
   - Builder: `app/(admin)/admin/events/[eventId]/quiz/page.tsx`
   - Live control: `app/(admin)/admin/events/[eventId]/quiz/live/page.tsx`
-  - APIs: `/api/quiz/sessions*`, `/api/quiz/questions*`, `/api/quiz/state`, `/api/quiz/answer`, `/api/quiz/active`, `/api/quiz/join`
+  - APIs: `/api/quiz/sessions*`, `/api/quiz/questions*`, `/api/quiz/state`, `/api/quiz/state/advance`, `/api/quiz/answer`, `/api/quiz/active`, `/api/quiz/join`
 - **Event feedback campaigns**
   - Active Vue pages: `src/views/admin/AdminFeedbackView.vue`, `src/views/FeedbackView.vue`
   - APIs: `/api/events/[eventId]/feedback-campaign`, `/api/feedback/events/[eventId]`, `/api/feedback/events/[eventId]/submissions`
@@ -68,9 +69,9 @@
 
 - **Entry point:** `lib/mock-db/index.ts`
 - **Key functions:**
-  - `readData<T>(filename)` — reads `data/{filename}.json`, returns `[]` on missing/corrupt
-  - `writeData<T>(filename, data)` — serializes writes via a per-filename promise queue (`writeQueues: Map<string, Promise<void>>`)
-- **Non-obvious logic:** The write queue chains promises per file key — concurrent writes to `events` and `sessions` can overlap, but concurrent writes to the same file are serialized. Reads are unguarded (last-write-wins on read-during-write).
+  - `readData<T>(filename)` — reads `data/{filename}.json`, returns `[]` only when the file is missing, and throws on invalid/non-array JSON.
+  - `writeData<T>(filename, data)` — serializes writes via a per-filename promise queue and replaces files through temp-file write + rename.
+- **Non-obvious logic:** The write queue chains promises per file key — concurrent writes to `events` and `sessions` can overlap, but concurrent writes to the same file are serialized inside one process. Atomic rename reduces partial-write corruption, but JSON files are still not a multi-process production store.
 - Each entity module (`events.ts`, `talks.ts`, etc.) exports typed helpers like `getAll*`, `get*ById`, `create*`, `update*`.
 - `event-checklists.ts` creates a default chronological run sheet on first read. For existing events, it infers already-reached milestones from the current event status so completed events start with post-event tasks instead of a blank checklist.
 
@@ -133,11 +134,12 @@
 - `src/views/admin/AdminQuizView.vue` generates local QR-code join links for the live lobby.
 - Legacy Next pages/components remain in `app/`, `components/`, and `hooks/` as a reference while routes are ported.
 
-### Quiz State API (`app/api/quiz/state/route.ts`)
+### Quiz State API (`server/quiz-state.ts`, `server/app.ts`)
 
 - **Key function:** `GET /api/quiz/state?sessionId=&userId=`
-- **Non-obvious logic:** This GET handler **mutates** the session. On every poll, if `question_phase === 'answering'` and either the time limit has expired or all participants have answered, it transitions the phase to `'revealing'` and stamps `phase_started_at`. This makes the server the authority on quiz timing — no client coordination needed.
-- `correct_index` is stripped from the question payload when `question_phase === 'answering'`; it's included in `'revealing'` and `'scoreboard'` phases.
+- **Advance command:** `POST /api/quiz/state/advance` checks whether the current active question should transition from `answering` to `revealing` because time expired or all participants answered.
+- **Non-obvious logic:** `GET /api/quiz/state` is now read-only; polling clients call the explicit advance command before fetching state. This removes hidden mutation from GET while preserving polling behavior until a realtime/job-backed state machine exists.
+- `correct_index` is stripped from `current_question` in the state payload; player-specific reveal data is returned through `player_result.correct_index` after answering.
 - A `SIMULATED_DELAY_MS` (300ms) `setTimeout` is added to simulate realistic network latency.
 
 ### Scoring (`lib/scoring.ts`)
@@ -220,7 +222,8 @@ POST /api/quiz/join              body: { join_code, nickname, device_id }
   → increments User.events_participated when joining a new session
   → returns { session_id, user_id, participant_id }
 
-GET  /api/quiz/state?sessionId=&userId=   (polled every 1500ms)
+POST /api/quiz/state/advance              body: { session_id } explicit phase tick
+GET  /api/quiz/state?sessionId=&userId=   read-only state fetch, polled every 1500ms
 POST /api/quiz/answer            body: { session_id, user_id, answer_index }
   → scores via scoring.ts, updates QuizParticipant totals and User.total_points
 ```

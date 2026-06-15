@@ -27,6 +27,7 @@ devcongress-comm-idea/
 |---|---|
 | `src` | Active Vue SPA, public/community views, organizer console views, route table, shared UI components. |
 | `server` | Hono app with API routes plus production Bun static/API server. |
+| `server/quiz-state.ts` | Extracted quiz state read model and explicit phase-advance helper. |
 | `lib/mock-db` | Entity-specific async helpers over `data/*.json`; `index.ts` provides queued writes. |
 | `lib/supabase` | Browser anon and server service-role Supabase clients for feedback and future migration. |
 | `lib/scoring.ts` | Quiz point and streak-bonus calculation. |

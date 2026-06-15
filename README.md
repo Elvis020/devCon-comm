@@ -132,6 +132,9 @@ This repository is being prepared for open-source collaboration. The public/comm
 - Supabase is being introduced as the durable source for public meetup data and feedback.
 - Admin auth is a same-origin prototype cookie flow, not a full role-based production auth system.
 - Live quiz realtime currently uses polling and is marked as a later rollout area.
+- Public deployments can hide the Organizer header button with `VITE_SHOW_ORGANIZER_LINK=false`.
+
+The full debt register is tracked in [Technical Debt](docs/reference/technical-debt.md).
 
 If you are contributing, please read [Contributing](CONTRIBUTING.md) and check [Architecture](docs/architecture.md) before changing data or route boundaries.
 

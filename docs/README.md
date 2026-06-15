@@ -36,5 +36,6 @@ This folder keeps the README lightweight. Use this page to find the right level 
 |---|---|
 | [Decisions](decisions.md) | Review architectural decisions and tradeoffs |
 | [Migration Parity](migration-parity.md) | Track remaining Next-to-Vue parity work |
+| [Technical Debt](reference/technical-debt.md) | Prioritized debt register for production readiness and contributor issue planning |
 | [Changelog](changelog.md) | Keep feature-level history current |
 | [Feature Docs](features/README.md) | Add or update feature documentation |

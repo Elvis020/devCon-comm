@@ -1,0 +1,129 @@
+import { getQuestionsBySession } from '@/lib/mock-db/questions';
+import { getQuizParticipantsBySession } from '@/lib/mock-db/quiz-participants';
+import { getQuizSessionById, updateQuizSession } from '@/lib/mock-db/quiz-sessions';
+import { getResponseByQuestionAndUser, getResponsesByQuestion } from '@/lib/mock-db/responses';
+import type { Question, QuizSession, QuizStateResponse, Response } from '@/types';
+
+export interface QuizAdvanceResult {
+  session: QuizSession | null;
+  advanced: boolean;
+}
+
+export async function advanceQuizSessionState(sessionId: string): Promise<QuizAdvanceResult> {
+  let session = await getQuizSessionById(sessionId);
+  if (!session) {
+    return { session: null, advanced: false };
+  }
+
+  if (session.status !== 'active' || session.question_phase !== 'answering') {
+    return { session, advanced: false };
+  }
+
+  const questions = await getQuestionsBySession(sessionId);
+  const currentQuestion = questions.find((question) => question.order_index === session!.current_question_index);
+
+  if (!currentQuestion || !session.question_started_at) {
+    return { session, advanced: false };
+  }
+
+  const elapsed = Date.now() - new Date(session.question_started_at).getTime();
+  const timeLimit = currentQuestion.time_limit_seconds * 1000;
+  const responses = await getResponsesByQuestion(currentQuestion.id);
+  const participants = await getQuizParticipantsBySession(sessionId);
+  const allAnswered = responses.length >= participants.length && participants.length > 0;
+
+  if (elapsed < timeLimit && !allAnswered) {
+    return { session, advanced: false };
+  }
+
+  session = await updateQuizSession(sessionId, {
+    question_phase: 'revealing',
+    phase_started_at: new Date().toISOString(),
+  });
+
+  return { session, advanced: true };
+}
+
+export async function buildQuizStateResponse(sessionId: string, userId?: string | null): Promise<QuizStateResponse | null> {
+  const session = await getQuizSessionById(sessionId);
+  if (!session) return null;
+
+  let currentQuestion: QuizStateResponse['current_question'] = null;
+  let questionStartedAt: string | null = null;
+  let fullCurrentQuestion: Question | null = null;
+
+  if (session.current_question_index >= 0) {
+    const questions = await getQuestionsBySession(sessionId);
+    const question = questions.find((candidate) => candidate.order_index === session.current_question_index) ?? null;
+
+    if (question) {
+      fullCurrentQuestion = question;
+      const { correct_index: _correctIndex, ...safeQuestion } = question;
+      currentQuestion = safeQuestion;
+      questionStartedAt = session.question_started_at || null;
+    }
+  }
+
+  const participants = await getQuizParticipantsBySession(sessionId);
+  let answersCount = 0;
+  let responses: Response[] = [];
+
+  if (fullCurrentQuestion) {
+    responses = await getResponsesByQuestion(fullCurrentQuestion.id);
+    answersCount = responses.length;
+  }
+
+  const leaderboard = participants
+    .sort((a, b) => b.total_score - a.total_score)
+    .slice(0, 10)
+    .map((participant, index) => ({
+      user_id: participant.user_id,
+      nickname: participant.nickname_used,
+      total_score: participant.total_score,
+      streak_count: participant.current_streak,
+      rank: index + 1,
+    }));
+
+  const answerDistribution = fullCurrentQuestion && (session.question_phase === 'revealing' || session.question_phase === 'scoreboard')
+    ? [0, 1, 2, 3].map((optionIndex) => {
+      const count = responses.filter((response) => response.answer_index === optionIndex).length;
+      return {
+        option_index: optionIndex,
+        count,
+        percentage: responses.length > 0 ? Math.round((count / responses.length) * 100) : 0,
+      };
+    })
+    : undefined;
+
+  let playerResult: QuizStateResponse['player_result'] = undefined;
+  if (userId && fullCurrentQuestion) {
+    const response = await getResponseByQuestionAndUser(fullCurrentQuestion.id, userId);
+    if (response) {
+      const participant = participants.find((candidate) => candidate.user_id === userId);
+
+      playerResult = {
+        is_correct: response.is_correct!,
+        points_awarded: response.points_awarded,
+        correct_index: fullCurrentQuestion.correct_index,
+        streak_count: participant?.current_streak || 0,
+      };
+    }
+  }
+
+  return {
+    session: {
+      id: session.id,
+      status: session.status,
+      current_question_index: session.current_question_index,
+      join_code: session.join_code,
+      question_phase: session.question_phase,
+    },
+    current_question: currentQuestion,
+    question_started_at: questionStartedAt,
+    participants_count: participants.length,
+    answers_count: answersCount,
+    leaderboard,
+    answer_distribution: answerDistribution,
+    player_result: playerResult,
+  };
+}

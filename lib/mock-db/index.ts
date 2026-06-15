@@ -3,7 +3,7 @@ import path from 'path';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 
-// Simple promise queue to prevent concurrent write corruption
+// Serializes writes inside this process; file-level atomic rename handles partial-write safety.
 const writeQueues: Map<string, Promise<void>> = new Map();
 
 async function enqueueWrite<T>(filename: string, fn: () => Promise<T>): Promise<T> {
@@ -16,19 +16,39 @@ async function enqueueWrite<T>(filename: string, fn: () => Promise<T>): Promise<
 }
 
 export async function readData<T>(filename: string): Promise<T[]> {
+  const filePath = path.join(DATA_DIR, `${filename}.json`);
+
   try {
-    const filePath = path.join(DATA_DIR, `${filename}.json`);
     const raw = await fs.readFile(filePath, 'utf-8');
-    return JSON.parse(raw) as T[];
+    const parsed = JSON.parse(raw);
+
+    if (!Array.isArray(parsed)) {
+      throw new Error(`Data file ${filePath} must contain a JSON array`);
+    }
+
+    return parsed as T[];
   } catch (error) {
-    // If file doesn't exist or is invalid, return empty array
-    return [];
+    if (isNodeError(error) && error.code === 'ENOENT') {
+      return [];
+    }
+
+    throw error instanceof Error
+      ? new Error(`Unable to read data file ${filePath}: ${error.message}`)
+      : new Error(`Unable to read data file ${filePath}`);
   }
 }
 
 export async function writeData<T>(filename: string, data: T[]): Promise<void> {
   return enqueueWrite(filename, async () => {
     const filePath = path.join(DATA_DIR, `${filename}.json`);
-    await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    const tempPath = `${filePath}.${Date.now()}-${Math.random().toString(16).slice(2)}.tmp`;
+
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    await fs.writeFile(tempPath, JSON.stringify(data, null, 2), 'utf-8');
+    await fs.rename(tempPath, filePath);
   });
+}
+
+function isNodeError(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && 'code' in error;
 }

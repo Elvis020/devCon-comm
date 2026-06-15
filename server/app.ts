@@ -1,7 +1,6 @@
 import { Hono } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { cors } from 'hono/cors';
-import { PDFParse } from 'pdf-parse';
 import { SIMULATED_DELAY_MS } from '@/lib/constants';
 import { compareSecretAnswer, hashSecretAnswer } from '@/lib/account-claim';
 import { attendanceMonthForEvent, buildAttendanceInsights, buildAttendanceLedger, buildAttendanceSummary, getAttendanceImports, getLatestAttendanceImport, removeAttendanceImport, replaceAttendanceImportFromCsv } from '@/lib/mock-db/attendance';
@@ -22,8 +21,9 @@ import { createUser, getAllUsers, getUserByDeviceId, getUserById, updateUser } f
 import { calculatePoints, calculateStreakBonus } from '@/lib/scoring';
 import { now } from '@/lib/utils';
 import { envValue } from '@/server/env';
+import { advanceQuizSessionState, buildQuizStateResponse } from '@/server/quiz-state';
 import type { Context } from 'hono';
-import type { Event, EventChecklistItem, FeedbackAnswer, FeedbackCampaign, FeedbackCampaignStatus, FeedbackQuestion, FeedbackQuestionType, GeneratedQuizFromPaperResponse, LeaderboardEntry, PublicMeetup, PublicMeetupScheduleItem, PublicMeetupSpeaker, Question, QuizParticipant, QuizStateResponse, Response, Talk, User } from '@/types';
+import type { Event, EventChecklistItem, FeedbackAnswer, FeedbackCampaign, FeedbackCampaignStatus, FeedbackQuestion, FeedbackQuestionType, GeneratedQuizFromPaperResponse, LeaderboardEntry, PublicMeetup, PublicMeetupScheduleItem, PublicMeetupSpeaker, Question, QuizParticipant, Response, Talk, User } from '@/types';
 import type { FeedbackKind, FeedbackStatus } from '@/types/supabase';
 
 const app = new Hono();
@@ -97,9 +97,44 @@ const STOP_WORDS = new Set([
   'would',
 ]);
 
+function configuredFrontendOrigins(c: Context): Set<string> {
+  return new Set([
+    envValue('PUBLIC_FRONTEND_ORIGIN', c),
+    envValue('PUBLIC_APP_URL', c),
+  ]
+    .filter((value): value is string => Boolean(value))
+    .map((value) => {
+      try {
+        return new URL(value).origin;
+      } catch {
+        return null;
+      }
+    })
+    .filter((value): value is string => Boolean(value)));
+}
+
+function corsOrigin(origin: string | undefined, c: Context): string | undefined {
+  if (!origin) return undefined;
+
+  const allowedOrigins = configuredFrontendOrigins(c);
+  if (allowedOrigins.has(origin) || origin.startsWith('http://localhost:')) {
+    return origin;
+  }
+
+  return undefined;
+}
+
 app.use('/api/public/*', cors({
   origin: '*',
   allowMethods: ['GET', 'OPTIONS'],
+  maxAge: 86400,
+}));
+
+app.use('/api/*', cors({
+  origin: corsOrigin,
+  allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type'],
+  credentials: true,
   maxAge: 86400,
 }));
 
@@ -1071,8 +1106,8 @@ app.post('/api/auth/admin/login', async (c) => {
 
   setCookie(c, ADMIN_SESSION_COOKIE, adminSessionToken(c), {
     httpOnly: true,
-    sameSite: 'Lax',
-    secure: envValue('NODE_ENV', c) === 'production',
+    sameSite: configuredFrontendOrigins(c).size > 0 ? 'None' : 'Lax',
+    secure: envValue('NODE_ENV', c) === 'production' || configuredFrontendOrigins(c).size > 0,
     path: '/',
     maxAge: 60 * 60 * 12,
   });
@@ -1685,6 +1720,10 @@ app.post('/api/quiz/sessions/:sessionId/questions/from-paper', async (c) => {
   const adminError = requireAdmin(c);
   if (adminError) return adminError;
 
+  if (envValue('ENABLE_PDF_QUIZ_UPLOADS', c) !== 'true') {
+    return c.json({ error: 'PDF quiz generation is coming soon for hosted deployments.' }, 501);
+  }
+
   const session = await getQuizSessionById(c.req.param('sessionId'));
   if (!session) {
     return c.json({ error: 'Session not found' }, 404);
@@ -1973,116 +2012,30 @@ app.get('/api/quiz/state', async (c) => {
     return c.json({ error: 'sessionId is required' }, 400);
   }
 
-  let session = await getQuizSessionById(sessionId);
-  if (!session) {
+  const stateResponse = await buildQuizStateResponse(sessionId, userId);
+  if (!stateResponse) {
     return c.json({ error: 'Session not found' }, 404);
-  }
-
-  if (session.status === 'active' && session.question_phase === 'answering') {
-    const questions = await getQuestionsBySession(sessionId);
-    const currentQuestion = questions.find((question) => question.order_index === session!.current_question_index);
-
-    if (currentQuestion && session.question_started_at) {
-      const elapsed = Date.now() - new Date(session.question_started_at).getTime();
-      const timeLimit = currentQuestion.time_limit_seconds * 1000;
-      const responses = await getResponsesByQuestion(currentQuestion.id);
-      const participants = await getQuizParticipantsBySession(sessionId);
-      const allAnswered = responses.length >= participants.length && participants.length > 0;
-
-      if (elapsed >= timeLimit || allAnswered) {
-        session = await updateQuizSession(sessionId, {
-          question_phase: 'revealing',
-          phase_started_at: new Date().toISOString(),
-        });
-      }
-    }
-  }
-
-  let currentQuestion = null;
-  let questionStartedAt = null;
-
-  if (session.current_question_index >= 0) {
-    const questions = await getQuestionsBySession(sessionId);
-    const question = questions.find((candidate) => candidate.order_index === session.current_question_index);
-
-    if (question) {
-      if (session.question_phase === 'answering') {
-        const { correct_index: _correctIndex, ...safeQuestion } = question;
-        currentQuestion = safeQuestion;
-      } else {
-        currentQuestion = question;
-      }
-      questionStartedAt = session.question_started_at || null;
-    }
-  }
-
-  const participants = await getQuizParticipantsBySession(sessionId);
-  let answersCount = 0;
-  let responses: Response[] = [];
-
-  if (currentQuestion) {
-    responses = await getResponsesByQuestion(currentQuestion.id);
-    answersCount = responses.length;
-  }
-
-  const leaderboard = participants
-    .sort((a, b) => b.total_score - a.total_score)
-    .slice(0, 10)
-    .map((participant, index) => ({
-      user_id: participant.user_id,
-      nickname: participant.nickname_used,
-      total_score: participant.total_score,
-      streak_count: participant.current_streak,
-      rank: index + 1,
-    }));
-
-  const answerDistribution = currentQuestion && (session.question_phase === 'revealing' || session.question_phase === 'scoreboard')
-    ? [0, 1, 2, 3].map((optionIndex) => {
-      const count = responses.filter((response) => response.answer_index === optionIndex).length;
-      return {
-        option_index: optionIndex,
-        count,
-        percentage: responses.length > 0 ? Math.round((count / responses.length) * 100) : 0,
-      };
-    })
-    : undefined;
-
-  let playerResult = undefined;
-  if (userId && currentQuestion) {
-    const response = await getResponseByQuestionAndUser(currentQuestion.id, userId);
-    if (response) {
-      const participant = participants.find((candidate) => candidate.user_id === userId);
-      const fullQuestion = (await getQuestionsBySession(sessionId)).find((question) => question.id === currentQuestion.id);
-
-      playerResult = {
-        is_correct: response.is_correct!,
-        points_awarded: response.points_awarded,
-        correct_index: fullQuestion?.correct_index ?? 0,
-        streak_count: participant?.current_streak || 0,
-      };
-    }
   }
 
   await new Promise((resolve) => setTimeout(resolve, SIMULATED_DELAY_MS));
 
-  const stateResponse: QuizStateResponse = {
-    session: {
-      id: session.id,
-      status: session.status,
-      current_question_index: session.current_question_index,
-      join_code: session.join_code,
-      question_phase: session.question_phase,
-    },
-    current_question: currentQuestion,
-    question_started_at: questionStartedAt,
-    participants_count: participants.length,
-    answers_count: answersCount,
-    leaderboard,
-    answer_distribution: answerDistribution,
-    player_result: playerResult,
-  };
-
   return c.json(stateResponse);
+});
+
+app.post('/api/quiz/state/advance', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const sessionId = typeof body.session_id === 'string' ? body.session_id : '';
+
+  if (!sessionId) {
+    return c.json({ error: 'session_id is required' }, 400);
+  }
+
+  const result = await advanceQuizSessionState(sessionId);
+  if (!result.session) {
+    return c.json({ error: 'Session not found' }, 404);
+  }
+
+  return c.json({ advanced: result.advanced });
 });
 
 app.post('/api/users/claim', async (c) => {
@@ -2270,6 +2223,7 @@ function parseRequestedQuestionCount(value: FormDataEntryValue | null): number {
 }
 
 async function extractTextFromPdf(bytes: Uint8Array): Promise<string> {
+  const { PDFParse } = await import('pdf-parse');
   const parser = new PDFParse({
     data: bytes,
     useWorkerFetch: false,

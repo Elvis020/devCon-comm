@@ -51,11 +51,13 @@ The seed script resets JSON mock data under `data/`. Use it when you want a know
 Organizer routes use a prototype shared-password session. In local development, set these values in `.env.local` if you do not want defaults:
 
 ```bash
+VITE_SHOW_ORGANIZER_LINK=true
 ADMIN_PASSWORD=devcon-admin
 ADMIN_SESSION_SECRET=replace-this-locally
 ```
 
 Do not use development defaults in a public deployment.
+Set `VITE_SHOW_ORGANIZER_LINK=false` in public deployments when you want to hide the Organizer button from the public header. This is only a visibility toggle; organizer routes still require real auth hardening before production use.
 
 ## Common Troubleshooting
 

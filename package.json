@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vue-tsc --noEmit && vite build",
+    "deploy:worker": "wrangler deploy",
     "start": "bun run server/index.ts",
     "typecheck": "vue-tsc --noEmit",
     "seed": "tsx data/seed.ts",
@@ -45,6 +46,7 @@
     "typescript": "^5",
     "vite": "^6.3.6",
     "vitest": "^3.2.4",
-    "vue-tsc": "^2.2.12"
+    "vue-tsc": "^2.2.12",
+    "wrangler": "^4.100.0"
   }
 }

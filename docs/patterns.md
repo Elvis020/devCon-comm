@@ -49,16 +49,14 @@ import { getAllEvents, createEvent } from '@/lib/mock-db/events';
 const events = await getAllEvents();
 ```
 
-### Answer Visibility Guard
-In the quiz state endpoint, strip `correct_index` for the `'answering'` phase:
+### Quiz State Progression
+Keep quiz state reads and phase changes separate:
 ```ts
-if (session.question_phase === 'answering') {
-  const { correct_index, ...safeQuestion } = q;
-  currentQuestion = safeQuestion;
-} else {
-  currentQuestion = q;  // full question in revealing/scoreboard
-}
+await fetch('/api/quiz/state/advance', { method: 'POST', body: JSON.stringify({ session_id }) });
+const state = await fetch(`/api/quiz/state?sessionId=${session_id}`);
 ```
+
+`GET /api/quiz/state` should stay read-only. Hide `correct_index` from `current_question`; reveal player-specific correctness through `player_result.correct_index` only after a player has answered.
 
 ### Role Checks
 Auth and role checks have not been migrated yet. Add them in the Hono server first so the Vue app can rely on same-origin session cookies.
@@ -96,6 +94,5 @@ Use `notify` from `src/lib/notify.ts` for app notifications so all messages targ
 
 ## Anti-Patterns Observed
 
-- **Writes inside GET handlers** — `GET /api/quiz/state` mutates the session to advance phases. This is intentional for prototype simplicity (server-driven timing), but would be replaced by a database trigger or cron in production.
 - **No auth middleware** — active Hono APIs do not have server-side access control yet. Add session/role checks before exposing admin mutations.
 - **Simulated delay in API routes** — `SIMULATED_DELAY_MS` `setTimeout` in every route. Remove before production.

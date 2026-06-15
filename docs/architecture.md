@@ -203,10 +203,11 @@ Browser GET /archive
 ```
 Browser (player)
   → POST /api/quiz/join           (get sessionId + userId)
-  → setInterval GET /api/quiz/state (every 1500ms)
-      ↓ server checks elapsed time
-      ↓ auto-advances phase if needed (mutates session)
-      ↓ strips correct_index in 'answering' phase
+  → setInterval POST /api/quiz/state/advance (explicit phase tick)
+      ↓ server checks elapsed time and all-answered state
+      ↓ advances phase if needed
+  → setInterval GET /api/quiz/state (read-only state fetch)
+      ↓ strips correct_index from current_question
   → POST /api/quiz/answer         (submit answer → score)
 ```
 

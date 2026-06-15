@@ -26,14 +26,15 @@ The current implementation is useful for prototyping but not yet treated as the 
 | `src/views/PlayView.vue` | Public quiz landing and inactive-session state |
 | `src/views/PlayCodeView.vue` | Player join/play experience |
 | `lib/scoring.ts` | Points and streak-bonus calculations |
-| `server/app.ts` | Quiz API routes and phase progression |
+| `server/app.ts` | Quiz API routes |
+| `server/quiz-state.ts` | Read-only state response and explicit phase-advance helper |
 | `data/questions.json` | Local seeded questions |
 | `data/quiz-sessions.json` | Local quiz sessions |
 
 ## Known Gaps
 
 - Polling is used instead of WebSockets or Supabase Realtime.
-- `GET /api/quiz/state` can mutate quiz phase as a prototype shortcut.
+- Clients call `POST /api/quiz/state/advance` before `GET /api/quiz/state` as an explicit polling-era phase tick; this should still become a job, Durable Object, or realtime-backed state machine before larger live games.
 - Realtime scale testing is still needed before public launch.
 
 ## Testing

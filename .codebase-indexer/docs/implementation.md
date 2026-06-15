@@ -19,19 +19,24 @@
 - **Entry point:** `server/app.ts`
 - **Key functions/routes:** `/api/events*`, `/api/talks*`, `/api/quiz*`, `/api/attendance*`, `/api/feedback*`, `/api/public/meetups*`, `/api/auth/*`
 - **Initialization:** Exported Hono app is consumed by Vite Hono plugin and `server/index.ts`.
-- **Non-obvious logic:** `GET /api/quiz/state` mutates quiz session phase; feedback auto-open is derived from completed event status and 3-day window; checklist milestones can advance event status.
+- **Non-obvious logic:** Quiz phase progression now uses explicit `POST /api/quiz/state/advance` plus read-only `GET /api/quiz/state`; feedback auto-open is derived from completed event status and 3-day window; checklist milestones can advance event status.
 
 ### Vue App Shell
 - **Entry point:** `src/main.ts`, `src/App.vue`, `src/router.ts`
 - **Key components:** `AdminEventTabs`, `FeedbackBot`, `AppToaster`, `ViewSkeleton`, `AppDropdown`, `AppNumberStepper`
 - **Initialization:** `createApp(App).use(createPinia()).use(router).mount('#app')`.
-- **Non-obvious logic:** Organizer routes use `VITE_ADMIN_BASE_PATH` through `src/admin-routes.ts`; shell polls `/api/quiz/active` so public Play link appears only for active/waiting sessions.
+- **Non-obvious logic:** Organizer routes use `VITE_ADMIN_BASE_PATH` through `src/admin-routes.ts`; the public Organizer header button is hidden only when `VITE_SHOW_ORGANIZER_LINK=false`; shell polls `/api/quiz/active` so public Play link appears only for active/waiting sessions.
 
 ### Mock DB
 - **Entry point:** `lib/mock-db/index.ts`
-- **Key functions:** `readData<T>`, `writeData<T>`, plus entity helpers in `events.ts`, `talks.ts`, `feedback.ts`, `attendance.ts`, `event-checklists.ts`, etc.
+- **Key functions:** `readData<T>` returns `[]` only for missing files and throws on invalid/non-array JSON; `writeData<T>` queues same-file writes and replaces files through temp-file rename; entity helpers live in `events.ts`, `talks.ts`, `feedback.ts`, `attendance.ts`, `event-checklists.ts`, etc.
 - **Initialization:** Reads/writes JSON files under `data/` on demand.
 - **Non-obvious logic:** Writes are serialized per filename using promise queues; reads are not locked. `event-checklists.ts` creates a default chronological run sheet on first read and infers already reached milestones from event status.
+
+### Quiz State
+- **Entry point:** `server/quiz-state.ts`
+- **Key behavior:** Builds the read-only quiz state response and advances answering sessions to revealing only through the explicit state-advance command.
+- **Non-obvious logic:** `current_question.correct_index` stays hidden; player-specific reveal data is exposed through `player_result.correct_index` after answering.
 
 ### Quiz
 - **Entry points:** `src/views/admin/AdminQuizView.vue`, `src/views/PlayView.vue`, `src/views/PlayCodeView.vue`, quiz routes in `server/app.ts`, legacy `app/api/quiz/state/route.ts`
@@ -67,6 +72,7 @@
 | Variable / Property | Default | Purpose |
 |---|---|---|
 | `VITE_ADMIN_BASE_PATH` | `/organizer-console` | Organizer route prefix. |
+| `VITE_SHOW_ORGANIZER_LINK` | `true` unless set to `false` | Public header visibility for the Organizer entry point; does not secure or disable organizer routes. |
 | `ADMIN_PASSWORD` | `devcon-admin` | Prototype organizer login password. |
 | `ADMIN_SESSION_SECRET` | `devcon-local-session` | Same-origin admin cookie value. |
 | `PUBLIC_APP_URL` | current request origin | Absolute public URLs in API payloads. |
@@ -84,11 +90,13 @@
 | Module / Function | Test File |
 |---|---|
 | `lib/scoring.ts` / `calculatePoints`, `calculateStreakBonus` | `lib/scoring.test.ts` |
+| `lib/mock-db/index.ts` / `readData`, `writeData` | `lib/mock-db/index.test.ts` |
+| `lib/luma-attendance.ts` / `parseLumaAttendanceCsv`, `summarizeAttendance` | `lib/luma-attendance.test.ts` |
+| `server/quiz-state.ts` / `advanceQuizSessionState`, `buildQuizStateResponse` | `server/quiz-state.test.ts` |
 | Legacy quiz state route `app/api/quiz/state/route.ts` | `app/api/quiz/state/route.test.ts` |
 | Active Hono server routes in `server/app.ts` | — no direct test found |
 | Vue organizer/public views under `src/views/` | — no direct test found |
-| `lib/mock-db/*` helpers | — no direct test found |
-| `lib/luma-attendance.ts` | — no direct test found |
+| Entity-specific `lib/mock-db/*` helpers | — no direct test found |
 | Supabase helpers/migrations | — no direct test found |
 
 ## Cross-Repo References

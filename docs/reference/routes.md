@@ -21,6 +21,7 @@ This is a contributor-facing route map. The active app is the Vue route surface 
 ## Organizer Routes
 
 The organizer base path defaults to `/organizer-console` and can be changed with `VITE_ADMIN_BASE_PATH`.
+The public header's Organizer button can be hidden with `VITE_SHOW_ORGANIZER_LINK=false`, but this does not disable the routes below.
 
 | Route | Purpose |
 |---|---|
@@ -44,7 +45,7 @@ The organizer base path defaults to `/organizer-console` and can be changed with
 | `/api/speakers*` | Speaker access workflows |
 | `/api/attendance*` | Luma CSV import, removal, summaries, monthly ledger |
 | `/api/feedback*` | App feedback, event campaigns, public feedback submission |
-| `/api/quiz*` | Quiz sessions, questions, join/play/host state |
+| `/api/quiz*` | Quiz sessions, questions, explicit state advancement, join/play/host state |
 | `/api/public/meetups*` | Read-only website integration API |
 | `/api/auth/*` | Prototype organizer login/logout/session |
 | `/api/health/*` | Local and Supabase readiness checks |

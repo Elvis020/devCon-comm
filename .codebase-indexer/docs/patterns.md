@@ -43,8 +43,8 @@
 - Seed/reset local mock data with `pnpm seed`.
 
 ## Anti-Patterns Observed
-- Intentional prototype GET mutation: `GET /api/quiz/state` mutates quiz session phase.
-- JSON flat files lack relational integrity and multi-process write safety.
+- Keep `GET /api/quiz/state` read-only; use `POST /api/quiz/state/advance` for polling-era phase progression.
+- JSON flat files fail loudly on corrupt data and use atomic temp-file rename on write, but still lack relational integrity and multi-process write safety.
 - Broad `server/app.ts` route file is large and centralizes many domains.
 - Legacy Next/React and active Vue/Hono code coexist; check active route surface before editing.
 - Several active UI/server modules currently have no direct automated tests.

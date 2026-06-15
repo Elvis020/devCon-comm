@@ -6,15 +6,22 @@ Use `.env.local` for local development. Do not commit real credentials.
 |---|---:|---:|---|
 | `VITE_SUPABASE_URL` | Optional locally | Yes | Supabase project URL used by browser and server helpers |
 | `VITE_SUPABASE_ANON_KEY` | Optional locally | Yes | Public Supabase anon key for browser-safe operations |
+| `VITE_API_BASE_URL` | Required for split Cloudflare Pages + Worker deployments until same-domain routing exists | Yes | Worker origin used by the Pages frontend for `/api/*` calls, for example `https://devcongress-comm-api.<account>.workers.dev` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Optional locally, required for server Supabase writes | No | Server-only key for privileged Supabase operations |
 | `VITE_ADMIN_BASE_PATH` | No | Yes | Organizer route prefix; defaults to `/organizer-console` |
+| `VITE_SHOW_ORGANIZER_LINK` | No | Yes | Public header visibility for the Organizer entry point; set to `false` to hide the button in production |
 | `ADMIN_PASSWORD` | No locally, yes for deployments | No | Prototype organizer login password |
 | `ADMIN_SESSION_SECRET` | No locally, yes for deployments | No | Prototype organizer cookie/session secret |
 | `PUBLIC_APP_URL` | No | No | Absolute base URL used in API payloads when request origin is unavailable |
+| `PUBLIC_FRONTEND_ORIGIN` | Required on Worker when Pages and Worker use different origins | No | Allowed browser origin for credentialed API CORS, for example the Cloudflare Pages URL |
+| `ENABLE_PDF_QUIZ_UPLOADS` | No | No | Set to `true` only in runtimes that support the PDF parser. Leave unset on Cloudflare Workers for phase one. |
 
 ## Rules
 
 - Only variables prefixed with `VITE_` are exposed to browser code.
 - Never prefix the Supabase service-role key with `VITE_`.
+- Keep `VITE_API_BASE_URL` pointed at the Worker origin only; do not include a trailing slash.
+- `VITE_SHOW_ORGANIZER_LINK=false` only hides the public navigation button; it does not secure organizer routes.
+- Set `PUBLIC_FRONTEND_ORIGIN` on the Worker whenever `VITE_API_BASE_URL` points the browser to a different origin, otherwise admin cookies and non-public API calls will be blocked by CORS.
 - Rotate any real key that appears in git history, logs, screenshots, or public issues.
 - Keep `.env.local` local and use deployment secret stores for hosted environments.

@@ -4,6 +4,16 @@
 
 ---
 
+## ADR-012: Explicit Quiz Phase Advance Command
+
+**Date:** 2026-06-15
+**Why:** Quiz polling still needs server-authoritative phase transitions, but mutating the session inside `GET /api/quiz/state` made a read endpoint perform hidden writes. Moving the transition check behind `POST /api/quiz/state/advance` keeps polling behavior working while making the mutation explicit and easier to replace later with a job, Durable Object, or realtime state machine.
+**Tradeoffs:** Polling clients now make one extra request before reading state, and any client that forgets the advance call may see stale `answering` state until another client advances it. This is still a prototype-era bridge, not the final realtime architecture.
+**Alternatives considered:** Keep GET mutation (simple but misleading), move immediately to Supabase Realtime or Durable Objects (larger deployment decision than this debt slice), or require organizer-only manual advancement (worse live-game UX).
+**Revisit when:** Quiz returns to phase-one scope or the app chooses a production realtime host.
+
+---
+
 ## ADR-011: Supabase Community Events As The Website Data Source
 
 **Date:** 2026-06-15
@@ -75,6 +85,7 @@
 ## ADR-003: Server-Driven Phase Transitions via GET Mutation
 
 **Date:** 2025-02
+**Status:** Superseded by ADR-012 for the active Vue/Hono app.
 **Why:** Centralizing timing on the server means all clients converge to the same phase without requiring them to coordinate or agree on clock time. The GET handler checks elapsed time on each poll and mutates the session if a transition is due.
 **Tradeoffs:** Breaks the HTTP convention of idempotent GETs; only safe because there's a single Node process. In production this would be a DB trigger, a Supabase Edge Function, or a cron job.
 **Alternatives considered:** Client-driven transitions (admin clicks "next" for each phase — simpler but requires manual pacing), cron job / background worker (correct but out of scope for prototype).
