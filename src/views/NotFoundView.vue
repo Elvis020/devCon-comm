@@ -10,68 +10,84 @@ const isOrganizerPath = computed(() => isAdminPath(route.path));
 
 const primaryLink = computed(() => (isOrganizerPath.value ? adminPath('events') : '/'));
 const primaryLabel = computed(() => (isOrganizerPath.value ? 'Organizer Console' : 'Back Home'));
+const eyebrow = computed(() => (isOrganizerPath.value ? 'organizer route' : 'community route'));
+const title = computed(() => (isOrganizerPath.value ? 'This organizer page is not available.' : 'We could not find that page.'));
+const description = computed(() => (isOrganizerPath.value
+  ? 'The address does not match an event, attendance, feedback, quiz, speaker, or talk management screen.'
+  : 'The address does not match a community page, talk archive, speaker link, feedback form, or quiz room.'));
+const secondaryLinks = computed(() => {
+  if (isOrganizerPath.value) {
+    return [
+      { href: adminPath('attendance'), label: 'Attendance Hub', detail: 'Check Luma imports and post-event readouts.' },
+      { href: adminPath('feedback'), label: 'Feedback Hub', detail: 'Review event feedback windows and responses.' },
+      { href: adminPath('events/new'), label: 'Create Event', detail: 'Start a new monthly event record.' },
+    ];
+  }
+
+  return [
+    { href: '/archive', label: 'Archive', detail: 'Published talks and slide decks.' },
+    { href: '/events', label: 'Events', detail: 'Upcoming community sessions.' },
+    { href: '/play', label: 'Live Quiz', detail: 'Join a quiz when a host opens one.' },
+  ];
+});
 </script>
 
 <template>
   <div class="editorial-page">
-    <section class="relative isolate flex min-h-[calc(100vh-104px)] items-center overflow-hidden border-b border-dc-yellow/10 px-4 py-14 sm:px-6 lg:px-8">
-      <div
-        class="absolute inset-0 -z-10 opacity-70"
-        style="
-          background-image:
-            linear-gradient(rgba(249, 225, 94, 0.04) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(249, 225, 94, 0.04) 1px, transparent 1px);
-          background-size: 42px 42px;
-        "
-      />
-      <div class="mx-auto grid w-full max-w-7xl gap-10 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
-        <div>
-          <p class="editorial-eyebrow">route not found</p>
-          <h1 class="mt-4 max-w-4xl text-6xl font-black leading-none tracking-tight text-white sm:text-7xl lg:text-8xl">
-            This page missed the schedule.
-          </h1>
-          <p class="mt-6 max-w-2xl text-lg leading-8 text-dc-gray-light">
-            The address does not match a public page, talk archive, quiz room, or organizer screen.
-          </p>
+    <section class="editorial-wrap flex min-h-[calc(100vh-6rem)] items-center py-10 lg:py-14">
+      <div class="w-full">
+        <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-end">
+          <div class="min-w-0">
+            <p class="editorial-eyebrow">{{ eyebrow }}</p>
+            <div class="mt-4 flex flex-col gap-5 border-b-2 border-dc-ink pb-7 sm:flex-row sm:items-end sm:justify-between">
+              <h1 class="max-w-4xl text-5xl font-black leading-none tracking-tight text-dc-ink sm:text-6xl lg:text-7xl">
+                {{ title }}
+              </h1>
+              <span class="shrink-0 font-mono text-6xl font-black leading-none text-dc-pink sm:text-7xl">404</span>
+            </div>
+            <p class="mt-6 max-w-2xl text-lg leading-8 text-dc-gray">
+              {{ description }}
+            </p>
 
-          <div class="mt-6 max-w-2xl rounded-md border border-dc-yellow/10 bg-[#11110f] px-4 py-3 font-mono text-xs text-dc-gray-light">
-            <span class="text-dc-yellow">Requested:</span>
-            <span class="break-all">{{ missingPath }}</span>
-          </div>
+            <div class="mt-6 max-w-3xl rounded-md border-2 border-dc-ink bg-dc-paper px-4 py-3 font-mono text-xs font-bold uppercase tracking-wide text-dc-gray shadow-[2px_2px_0_#111111]">
+              <span class="text-dc-pink">Requested</span>
+              <span class="mx-2 text-dc-border">/</span>
+              <span class="break-all text-dc-ink">{{ missingPath }}</span>
+            </div>
 
-          <div class="mt-8 flex flex-col gap-3 sm:flex-row">
-            <RouterLink :to="primaryLink" class="editorial-action">
-              {{ primaryLabel }}
-            </RouterLink>
-            <RouterLink to="/archive" class="editorial-secondary-action">
-              Browse Archive
-            </RouterLink>
-            <RouterLink to="/leaderboard" class="editorial-secondary-action">
-              Leaderboard
-            </RouterLink>
-          </div>
-        </div>
-
-        <aside class="editorial-panel relative overflow-hidden p-6">
-          <div class="absolute right-4 top-4 font-mono text-8xl font-black leading-none text-dc-yellow/[0.06]">404</div>
-          <div class="relative">
-            <p class="font-mono text-xs font-semibold uppercase tracking-[0.22em] text-dc-yellow">reconnect</p>
-            <div class="mt-8 space-y-4">
-              <RouterLink to="/archive" class="motion-surface group block rounded-md border border-dc-yellow/10 bg-dc-yellow/[0.03] p-4 hover:border-dc-yellow/35 hover:bg-dc-yellow/[0.07]">
-                <p class="font-mono text-sm font-bold uppercase tracking-wide text-white group-hover:text-dc-yellow">Archive</p>
-                <p class="mt-2 text-sm leading-6 text-dc-gray-light">Find published talks and slide decks.</p>
+            <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+              <RouterLink :to="primaryLink" class="editorial-action">
+                {{ primaryLabel }}
               </RouterLink>
-              <RouterLink to="/my-talks" class="motion-surface group block rounded-md border border-dc-yellow/10 bg-dc-yellow/[0.03] p-4 hover:border-dc-yellow/35 hover:bg-dc-yellow/[0.07]">
-                <p class="font-mono text-sm font-bold uppercase tracking-wide text-white group-hover:text-dc-yellow">My Talks</p>
-                <p class="mt-2 text-sm leading-6 text-dc-gray-light">Check speaker submissions and uploads.</p>
+              <RouterLink v-if="!isOrganizerPath" to="/archive" class="editorial-secondary-action">
+                Browse Archive
               </RouterLink>
-              <RouterLink to="/play" class="motion-surface group block rounded-md border border-dc-yellow/10 bg-dc-yellow/[0.03] p-4 hover:border-dc-yellow/35 hover:bg-dc-yellow/[0.07]">
-                <p class="font-mono text-sm font-bold uppercase tracking-wide text-white group-hover:text-dc-yellow">Live Quiz</p>
-                <p class="mt-2 text-sm leading-6 text-dc-gray-light">Join when a host opens a session.</p>
+              <RouterLink v-if="isOrganizerPath" :to="adminPath('events')" class="editorial-secondary-action">
+                View Events
               </RouterLink>
             </div>
           </div>
-        </aside>
+
+          <aside class="overflow-hidden rounded-lg border-2 border-dc-ink bg-dc-paper shadow-[3px_3px_0_#111111]">
+            <div class="border-b-2 border-dc-ink bg-dc-yellow px-5 py-4">
+              <p class="font-mono text-xs font-black uppercase tracking-[0.22em] text-dc-ink">Try instead</p>
+            </div>
+            <div class="divide-y divide-dc-border">
+              <RouterLink
+                v-for="link in secondaryLinks"
+                :key="link.href"
+                :to="link.href"
+                class="group grid grid-cols-[minmax(0,1fr)_1rem] gap-4 px-5 py-5 hover:bg-dc-paper-warm"
+              >
+                <span class="min-w-0">
+                  <span class="block font-mono text-sm font-black uppercase tracking-wide text-dc-ink group-hover:text-dc-pink">{{ link.label }}</span>
+                  <span class="mt-2 block text-sm leading-6 text-dc-gray">{{ link.detail }}</span>
+                </span>
+                <span class="font-mono text-sm font-black text-dc-yellow transition-transform duration-150 ease-[var(--motion-fast)] group-hover:translate-x-0.5">→</span>
+              </RouterLink>
+            </div>
+          </aside>
+        </div>
       </div>
     </section>
   </div>

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import AppDropdown from '@/src/components/AppDropdown.vue';
+import CommunityMasthead from '@/src/components/CommunityMasthead.vue';
+import ViewSkeleton from '@/src/components/ui/ViewSkeleton.vue';
 import type { Event, Talk } from '@/types';
 
 interface OverviewResponse {
@@ -140,35 +142,13 @@ onMounted(async () => {
 <template>
   <div class="editorial-page">
     <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
-      <div class="mb-8 rounded-lg border border-dc-yellow/10 bg-[#11110f] p-5 shadow-[0_20px_80px_rgba(0,0,0,0.24)] sm:p-7 lg:mb-10">
-        <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p class="editorial-eyebrow">community memory</p>
-            <h1 class="mt-2 text-4xl font-black tracking-tight text-white sm:text-5xl">Archive</h1>
-            <p class="mt-3 max-w-3xl text-base leading-7 text-dc-gray-light">
-              Find the talks, speakers, topics, and slide decks that keep the community useful after event night.
-            </p>
-          </div>
-          <div v-if="completedEvents.length > 0" class="grid grid-cols-3 gap-3 sm:min-w-[360px]">
-            <div class="rounded-md border border-dc-yellow/10 bg-dc-yellow/[0.04] p-3">
-              <div class="font-mono text-xl font-bold text-white">{{ completedEvents.length }}</div>
-              <div class="mt-1 font-mono text-[10px] uppercase tracking-wider text-dc-gray-light">events</div>
-            </div>
-            <div class="rounded-md border border-dc-yellow/10 bg-dc-yellow/[0.04] p-3">
-              <div class="font-mono text-xl font-bold text-white">{{ publishedTalks.length }}</div>
-              <div class="mt-1 font-mono text-[10px] uppercase tracking-wider text-dc-gray-light">talks</div>
-            </div>
-            <div class="rounded-md border border-dc-yellow/10 bg-dc-yellow/[0.04] p-3">
-              <div class="font-mono text-xl font-bold text-white">{{ years.length }}</div>
-              <div class="mt-1 font-mono text-[10px] uppercase tracking-wider text-dc-gray-light">years</div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <CommunityMasthead
+        eyebrow="community memory"
+        title="Archive"
+        description="Find the talks, speakers, topics, and slide decks that keep the community useful after event night."
+      />
 
-      <div v-if="loading" class="editorial-panel p-12 text-center font-mono text-dc-gray">
-        Loading archive...
-      </div>
+      <ViewSkeleton v-if="loading" variant="ledger" :rows="4" />
       <div v-else-if="error" class="border-2 border-red-500/60 bg-red-950/30 p-12 text-center font-mono text-red-100">
         {{ error }}
       </div>
@@ -183,27 +163,27 @@ onMounted(async () => {
               v-for="year in years"
               :key="year"
               class="motion-press shrink-0 rounded-md px-5 py-3 font-mono text-sm font-bold"
-              :class="activeYear === year ? 'bg-dc-yellow text-dc-dark' : 'border border-dc-yellow/15 bg-[#151512] text-dc-gray-light hover:border-dc-yellow/35 hover:text-white'"
+              :class="activeYear === year ? 'border-2 border-dc-ink bg-dc-yellow text-dc-ink' : 'border-2 border-dc-ink bg-dc-paper text-dc-gray hover:bg-dc-paper-warm hover:text-dc-ink'"
               @click="selectedYear = year"
             >
               {{ year }}
             </button>
           </div>
 
-          <nav class="hidden rounded-lg border border-dc-yellow/10 bg-[#11110f] p-3 lg:block">
-            <div class="mb-3 px-2 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-dc-yellow/60">
+          <nav class="hidden rounded-lg border-2 border-dc-ink bg-dc-paper p-3 shadow-[3px_3px_0_#111111] lg:block">
+            <div class="mb-3 px-2 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-dc-pink">
               Years
             </div>
             <ul class="space-y-1">
               <li v-for="year in years" :key="year">
                 <button
                   class="motion-press group w-full rounded-md px-3 py-3 text-left"
-                  :class="activeYear === year ? 'bg-dc-yellow text-dc-dark shadow-[0_10px_35px_rgba(249,225,94,0.14)]' : 'text-dc-gray-light hover:bg-dc-yellow/[0.05] hover:text-white'"
+                  :class="activeYear === year ? 'bg-dc-yellow text-dc-ink' : 'text-dc-gray hover:bg-dc-paper-warm hover:text-dc-ink'"
                   @click="selectedYear = year"
                 >
                   <div class="flex items-baseline justify-between gap-3">
                     <span class="font-mono text-lg font-bold tracking-tight">{{ year }}</span>
-                    <span class="font-mono text-[11px]" :class="activeYear === year ? 'text-dc-dark/70' : 'text-dc-gray'">
+                    <span class="font-mono text-[11px]" :class="activeYear === year ? 'text-dc-ink/70' : 'text-dc-gray'">
                       {{ yearEventCount(year) }}
                     </span>
                   </div>
@@ -216,18 +196,18 @@ onMounted(async () => {
         <main class="min-w-0 flex-1">
           <header class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p class="font-mono text-xs font-semibold uppercase tracking-[0.2em] text-dc-yellow/70">Selected year</p>
-              <h2 class="mt-1 text-4xl font-black leading-none tracking-tight text-white sm:text-5xl">
+              <p class="font-mono text-xs font-semibold uppercase tracking-[0.2em] text-dc-pink">Selected year</p>
+              <h2 class="mt-1 text-4xl font-black leading-none tracking-tight text-dc-ink sm:text-5xl">
                 {{ activeYear }}
               </h2>
             </div>
-            <div class="flex gap-2 font-mono text-xs uppercase tracking-wide text-dc-gray-light">
-              <span class="rounded-md border border-dc-yellow/10 bg-[#151512] px-3 py-2">{{ selectedYearEvents.length }} events</span>
-              <span class="rounded-md border border-dc-yellow/10 bg-[#151512] px-3 py-2">{{ selectedYearTalkCount }} talks</span>
+            <div class="flex gap-2 font-mono text-xs uppercase tracking-wide text-dc-gray">
+              <span class="rounded-md border-2 border-dc-ink bg-dc-paper px-3 py-2">{{ selectedYearEvents.length }} events</span>
+              <span class="rounded-md border-2 border-dc-ink bg-dc-paper px-3 py-2">{{ selectedYearTalkCount }} talks</span>
             </div>
           </header>
 
-          <section class="mb-6 grid gap-3 rounded-lg border border-dc-yellow/10 bg-[#11110f] p-3 md:grid-cols-[1fr_180px_220px_auto] md:items-end">
+          <section class="mb-6 grid gap-3 rounded-lg border-2 border-dc-ink bg-dc-paper p-3 shadow-[3px_3px_0_#111111] md:grid-cols-[1fr_180px_220px_auto] md:items-end">
             <label class="block">
               <span class="editorial-label">Search</span>
               <input
@@ -263,8 +243,8 @@ onMounted(async () => {
           </section>
 
           <div v-if="selectedYearEvents.length === 0" class="editorial-panel p-8">
-            <h3 class="text-2xl font-black tracking-tight text-white">No archive matches</h3>
-            <p class="mt-2 text-dc-gray-light">Try a broader topic, speaker, or search term.</p>
+            <h3 class="text-2xl font-black tracking-tight text-dc-ink">No archive matches</h3>
+            <p class="mt-2 text-dc-gray">Try a broader topic, speaker, or search term.</p>
           </div>
 
           <div class="grid gap-4">
@@ -272,24 +252,24 @@ onMounted(async () => {
               v-for="event in selectedYearEvents"
               :key="event.id"
               :to="`/archive/${event.id}`"
-              class="motion-surface motion-lift group block rounded-lg border border-dc-yellow/10 bg-[#141412] p-4 hover:border-dc-yellow/30 hover:bg-[#191916] hover:shadow-[0_20px_70px_rgba(0,0,0,0.28)] sm:p-5"
+              class="motion-surface motion-lift group block rounded-lg border-2 border-dc-ink bg-dc-paper p-4 shadow-[3px_3px_0_#111111] hover:bg-dc-paper-warm sm:p-5"
             >
               <article class="grid gap-5 lg:grid-cols-[116px_1fr]">
                 <div class="flex items-center gap-3 lg:block">
-                  <time class="flex size-[76px] shrink-0 flex-col items-center justify-center rounded-md border border-dc-yellow/20 bg-dc-yellow/[0.06] text-center">
-                    <span class="font-mono text-[11px] font-bold uppercase tracking-wider text-dc-yellow">{{ eventDateParts(event.event_date).month }}</span>
-                    <span class="font-mono text-3xl font-bold leading-none text-white">{{ eventDateParts(event.event_date).day }}</span>
+                  <time class="flex size-[76px] shrink-0 flex-col items-center justify-center rounded-md border-2 border-dc-ink bg-dc-yellow text-center">
+                    <span class="font-mono text-[11px] font-bold uppercase tracking-wider text-dc-pink">{{ eventDateParts(event.event_date).month }}</span>
+                    <span class="font-mono text-3xl font-bold leading-none text-dc-ink">{{ eventDateParts(event.event_date).day }}</span>
                   </time>
-                  <div class="font-mono text-xs uppercase tracking-wide text-dc-gray-light lg:mt-3">
+                  <div class="font-mono text-xs uppercase tracking-wide text-dc-gray lg:mt-3">
                     {{ publishedTalksFor(event.id).length }} talks
                   </div>
                 </div>
 
                 <div class="min-w-0">
-                  <h3 class="motion-colors text-2xl font-black tracking-tight text-white group-hover:text-dc-yellow sm:text-3xl">
+                  <h3 class="motion-colors text-2xl font-black tracking-tight text-dc-ink group-hover:text-dc-pink sm:text-3xl">
                     {{ event.name }}
                   </h3>
-                  <p class="mt-2 max-w-3xl text-sm leading-6 text-dc-gray-light sm:text-base">
+                  <p class="mt-2 max-w-3xl text-sm leading-6 text-dc-gray sm:text-base">
                     {{ event.description }}
                   </p>
 
@@ -297,7 +277,7 @@ onMounted(async () => {
                     <span
                       v-for="tag in tagsFor(event.id)"
                       :key="tag"
-                      class="rounded-full border border-dc-yellow/10 bg-dc-yellow/[0.05] px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wider text-dc-yellow/90"
+                      class="rounded-full border border-dc-ink bg-dc-paper-warm px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wider text-dc-ink"
                     >
                       {{ tag }}
                     </span>
@@ -310,13 +290,13 @@ onMounted(async () => {
                     <div
                       v-for="talk in talksPreviewFor(event.id)"
                       :key="talk.id"
-                      class="rounded-md border border-dc-yellow/[0.07] bg-[#0f0f0d] px-3 py-3 sm:grid sm:grid-cols-[1fr_auto] sm:items-center sm:gap-4"
+                      class="rounded-md border border-dc-border bg-dc-cream px-3 py-3 sm:grid sm:grid-cols-[1fr_auto] sm:items-center sm:gap-4"
                     >
                       <div class="min-w-0">
-                        <p class="truncate text-sm font-semibold text-white">{{ talk.title }}</p>
-                        <p class="mt-1 truncate text-xs text-dc-gray-light">{{ talk.speaker_name }}</p>
+                        <p class="truncate text-sm font-semibold text-dc-ink">{{ talk.title }}</p>
+                        <p class="mt-1 truncate text-xs text-dc-gray">{{ talk.speaker_name }}</p>
                       </div>
-                      <span class="mt-2 inline-block font-mono text-[10px] font-bold uppercase tracking-wider text-dc-yellow/80 sm:mt-0">
+                      <span class="mt-2 inline-block font-mono text-[10px] font-bold uppercase tracking-wider text-dc-pink sm:mt-0">
                         {{ talk.topic }}
                       </span>
                     </div>

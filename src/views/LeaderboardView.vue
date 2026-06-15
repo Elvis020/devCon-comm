@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
+import CommunityMasthead from '@/src/components/CommunityMasthead.vue';
 import NaviiAvatar from '@/src/components/NaviiAvatar.vue';
+import ViewSkeleton from '@/src/components/ui/ViewSkeleton.vue';
 
 interface LeaderboardEntry {
   rank: number;
@@ -44,6 +46,7 @@ const pageCount = computed(() => Math.max(1, Math.ceil(leaderboard.value.length 
 const paginatedLeaderboard = computed(() => leaderboard.value.slice((page.value - 1) * pageSize, page.value * pageSize));
 const pageStart = computed(() => (leaderboard.value.length === 0 ? 0 : (page.value - 1) * pageSize + 1));
 const pageEnd = computed(() => Math.min(leaderboard.value.length, page.value * pageSize));
+const topScore = computed(() => leaderboard.value[0]?.total_score ?? 0);
 
 function naviiSeed(entry: LeaderboardEntry): string {
   return entry.user_id || entry.device_id || `${entry.nickname}-${entry.rank}`;
@@ -152,9 +155,9 @@ async function submitMerge() {
 }
 
 function rankLabel(rank: number): string {
-  if (rank === 1) return '🥇';
-  if (rank === 2) return '🥈';
-  if (rank === 3) return '🥉';
+  if (rank === 1) return '01';
+  if (rank === 2) return '02';
+  if (rank === 3) return '03';
   return `#${rank}`;
 }
 
@@ -176,28 +179,31 @@ onUnmounted(() => {
 <template>
   <div class="editorial-page">
     <div class="editorial-wrap">
-      <div class="editorial-header">
-        <p class="editorial-eyebrow">rankings</p>
-        <h1 class="editorial-title">{{ title }}</h1>
-        <p class="editorial-subtitle">Community reputation from live quiz play, with profile claiming for people who show up across events.</p>
-      </div>
+      <CommunityMasthead
+        eyebrow="rankings"
+        title="Leaderboard"
+        description="Rankings are paused while the live quiz work is re-scoped for a low-cost community launch."
+        ribbon="Coming soon"
+      />
 
-      <section>
+      <section class="coming-soon-muted">
         <div
-          class="z-30 -mx-4 mb-8 border-b border-dc-yellow/10 bg-[#090908]/95 px-4 py-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+          class="z-30 mb-8 border-b-2 border-dc-ink bg-dc-cream/95 py-4 backdrop-blur"
           :class="keepModeSwitcherSticky ? 'sticky top-0' : 'relative'"
         >
           <div class="flex flex-wrap gap-3">
             <button
-              class="motion-press rounded-md border px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide"
-              :class="leaderboardMode === 'all-time' ? 'border-dc-yellow bg-dc-yellow text-dc-dark' : 'border-dc-yellow/20 text-dc-gray-light hover:border-dc-yellow/50 hover:text-white'"
+              class="motion-press rounded-md border-2 px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide"
+              :class="leaderboardMode === 'all-time' ? 'border-dc-ink bg-dc-yellow text-dc-ink shadow-[2px_2px_0_#111111]' : 'border-dc-ink bg-dc-paper text-dc-gray hover:bg-dc-paper-warm hover:text-dc-ink'"
+              disabled
               @click="setMode('all-time')"
             >
               All Time
             </button>
             <button
-              class="motion-press rounded-md border px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide"
-              :class="leaderboardMode === 'monthly' ? 'border-dc-yellow bg-dc-yellow text-dc-dark' : 'border-dc-yellow/20 text-dc-gray-light hover:border-dc-yellow/50 hover:text-white'"
+              class="motion-press rounded-md border-2 px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide"
+              :class="leaderboardMode === 'monthly' ? 'border-dc-ink bg-dc-yellow text-dc-ink shadow-[2px_2px_0_#111111]' : 'border-dc-ink bg-dc-paper text-dc-gray hover:bg-dc-paper-warm hover:text-dc-ink'"
+              disabled
               @click="setMode('monthly')"
             >
               This Month
@@ -205,30 +211,25 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <div v-if="loading" class="flex min-h-[40vh] items-center justify-center">
-          <div class="text-center">
-            <div class="motion-spinner mb-4 inline-block size-16 rounded-full border-4 border-dc-yellow border-t-transparent" />
-            <p class="text-lg text-white">Loading...</p>
-          </div>
-        </div>
+        <ViewSkeleton v-if="loading" variant="leaderboard" :rows="8" />
 
         <template v-else>
           <div ref="leaderboardPanel" class="editorial-panel">
-          <div class="grid grid-cols-12 gap-4 border-b border-dc-yellow/10 bg-dc-dark-2/60 px-6 py-4">
-            <div class="col-span-2 text-xs font-bold uppercase tracking-wider text-dc-yellow">Rank</div>
-            <div class="col-span-6 text-xs font-bold uppercase tracking-wider text-dc-yellow">Player</div>
-            <div class="col-span-4 text-right text-xs font-bold uppercase tracking-wider text-dc-yellow">Score</div>
+          <div class="grid grid-cols-12 gap-4 border-b-2 border-dc-ink bg-dc-yellow px-6 py-4">
+            <div class="col-span-2 text-xs font-bold uppercase tracking-wider text-dc-ink">Rank</div>
+            <div class="col-span-6 text-xs font-bold uppercase tracking-wider text-dc-ink">Player</div>
+            <div class="col-span-4 text-right text-xs font-bold uppercase tracking-wider text-dc-ink">Score</div>
           </div>
 
-          <div class="divide-y-2 divide-dc-dark-3">
+          <div class="divide-y-2 divide-dc-border">
             <div
             v-for="entry in paginatedLeaderboard"
               :key="entry.rank"
               class="motion-colors grid grid-cols-12 gap-4 px-6 py-4"
-              :class="entry.rank <= 3 ? 'bg-dc-yellow/5 hover:bg-dc-yellow/10' : 'hover:bg-dc-dark-2'"
+              :class="entry.rank <= 3 ? 'bg-dc-paper-warm hover:bg-dc-yellow/30' : 'hover:bg-dc-paper-warm'"
             >
               <div class="col-span-2 flex items-center gap-2">
-                <span class="font-mono text-2xl font-bold" :class="entry.rank <= 3 ? 'text-3xl text-dc-yellow' : 'text-dc-gray'">
+                <span class="font-mono text-2xl font-bold" :class="entry.rank <= 3 ? 'text-3xl text-dc-pink' : 'text-dc-gray'">
                   {{ rankLabel(entry.rank) }}
                 </span>
               </div>
@@ -236,9 +237,9 @@ onUnmounted(() => {
               <div class="col-span-6 flex min-w-0 items-center gap-4">
                 <NaviiAvatar :seed="naviiSeed(entry)" :title="`${entry.nickname} avatar`" :size="48" />
                 <div class="min-w-0">
-                  <div class="truncate text-lg font-bold" :class="entry.rank <= 3 ? 'text-dc-yellow' : 'text-white'">
+                  <div class="truncate text-lg font-bold" :class="entry.rank <= 3 ? 'text-dc-ink' : 'text-dc-ink'">
                     {{ entry.nickname }}
-                    <span v-if="entry.is_claimed" class="ml-2 align-middle font-mono text-xs font-bold uppercase tracking-wide text-green-300">claimed</span>
+                    <span v-if="entry.is_claimed" class="ml-2 align-middle font-mono text-xs font-bold uppercase tracking-wide text-green-700">claimed</span>
                   </div>
                   <div v-if="entry.events_participated" class="mt-1 text-sm text-dc-gray">
                     {{ entry.events_participated }} {{ entry.events_participated === 1 ? 'event' : 'events' }}
@@ -247,7 +248,7 @@ onUnmounted(() => {
               </div>
 
               <div class="col-span-4 flex items-center justify-end gap-2">
-                <span class="text-3xl font-black" :class="entry.rank <= 3 ? 'text-dc-yellow' : 'text-white'">
+                <span class="text-3xl font-black" :class="entry.rank <= 3 ? 'text-dc-pink' : 'text-dc-ink'">
                   {{ entry.total_score }}
                 </span>
                 <span class="text-xs uppercase text-dc-gray">pts</span>
@@ -259,27 +260,29 @@ onUnmounted(() => {
             <p class="text-lg text-dc-gray">No scores yet. Be the first.</p>
           </div>
 
-          <div v-else class="flex flex-col gap-4 border-t border-dc-yellow/10 bg-dc-dark-2/40 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <p class="font-mono text-xs uppercase tracking-wide text-dc-gray-light">
+          <div v-else class="pagination-footer border-t-2 border-dc-ink bg-dc-paper-warm">
+            <p class="pagination-summary">
               Showing {{ pageStart }}-{{ pageEnd }} of {{ leaderboard.length }}
             </p>
-            <div class="flex items-center gap-2">
+            <div class="pagination-controls">
               <button
-                class="motion-press rounded-md border border-dc-yellow/20 px-3 py-2 font-mono text-xs font-bold uppercase tracking-wide text-dc-gray-light hover:border-dc-yellow/50 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                class="pagination-button"
                 :disabled="page === 1"
                 @click="goToPage(page - 1)"
               >
+                <span aria-hidden="true">‹</span>
                 Prev
               </button>
-              <span class="rounded-md border border-dc-yellow/20 px-3 py-2 font-mono text-xs font-bold text-dc-yellow">
-                {{ page }} / {{ pageCount }}
+              <span class="pagination-count" aria-live="polite">
+                Page {{ page }} of {{ pageCount }}
               </span>
               <button
-                class="motion-press rounded-md border border-dc-yellow/20 px-3 py-2 font-mono text-xs font-bold uppercase tracking-wide text-dc-gray-light hover:border-dc-yellow/50 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                class="pagination-button"
                 :disabled="page === pageCount"
                 @click="goToPage(page + 1)"
               >
                 Next
+                <span aria-hidden="true">›</span>
               </button>
             </div>
           </div>
@@ -287,37 +290,37 @@ onUnmounted(() => {
         </template>
       </section>
 
-        <div class="editorial-panel mt-10 p-6">
-          <h2 class="mb-2 text-2xl font-black text-white">Account Tools (Prototype)</h2>
-          <p class="mb-6 text-dc-gray">Claim a leaderboard profile, then merge duplicate profiles into one account.</p>
+        <div class="editorial-panel mt-10 p-6 opacity-60">
+          <h2 class="mb-2 text-2xl font-black text-dc-ink">Account Tools (Prototype)</h2>
+          <p class="mb-6 text-dc-gray">Coming soon with the leaderboard. Profile claiming stays paused for the low-cost launch phase.</p>
 
-          <div v-if="accountMessage" class="mb-4 border border-green-500/50 bg-green-500/10 px-4 py-3 text-sm text-green-200">
+          <div v-if="accountMessage" class="mb-4 border border-green-700/50 bg-green-100 px-4 py-3 text-sm text-green-800">
             {{ accountMessage }}
           </div>
-          <div v-if="accountError" class="mb-4 border border-red-500/50 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          <div v-if="accountError" class="mb-4 border border-red-700/50 bg-red-100 px-4 py-3 text-sm text-red-800">
             {{ accountError }}
           </div>
 
           <div class="grid gap-6 lg:grid-cols-2">
             <form class="space-y-3" @submit.prevent="submitClaim">
-              <h3 class="text-lg font-bold text-dc-yellow">Claim Profile</h3>
+              <h3 class="text-lg font-bold text-dc-pink">Claim Profile</h3>
               <input v-model="claimForm.userId" class="editorial-input" placeholder="User ID" required />
               <input v-model="claimForm.deviceId" class="editorial-input" placeholder="Device ID" required />
               <input v-model="claimForm.username" class="editorial-input" placeholder="Username" required />
               <input v-model="claimForm.email" class="editorial-input" placeholder="Email (optional)" />
               <input v-model="claimForm.secretQuestion" class="editorial-input" placeholder="Secret Question" required />
               <input v-model="claimForm.secretAnswer" class="editorial-input" placeholder="Secret Answer" type="password" required />
-              <button type="submit" :disabled="claiming" class="editorial-action disabled:opacity-60">
+              <button type="submit" disabled class="editorial-action disabled:cursor-not-allowed disabled:opacity-60">
                 {{ claiming ? 'Claiming...' : 'Claim Profile' }}
               </button>
             </form>
 
             <form class="space-y-3" @submit.prevent="submitMerge">
-              <h3 class="text-lg font-bold text-dc-yellow">Merge Duplicate</h3>
+              <h3 class="text-lg font-bold text-dc-pink">Merge Duplicate</h3>
               <input v-model="mergeForm.targetUserId" class="editorial-input" placeholder="Target Claimed User ID" required />
               <input v-model="mergeForm.sourceUserId" class="editorial-input" placeholder="Source Duplicate User ID" required />
               <input v-model="mergeForm.secretAnswer" class="editorial-input" placeholder="Target Secret Answer" type="password" required />
-              <button type="submit" :disabled="merging" class="editorial-action disabled:opacity-60">
+              <button type="submit" disabled class="editorial-action disabled:cursor-not-allowed disabled:opacity-60">
                 {{ merging ? 'Merging...' : 'Merge Profiles' }}
               </button>
             </form>

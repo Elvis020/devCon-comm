@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import NaviiAvatar from '@/src/components/NaviiAvatar.vue';
+import ViewSkeleton from '@/src/components/ui/ViewSkeleton.vue';
 import type { Event, LeaderboardEntry, QuizSession, Talk } from '@/types';
 
 interface OverviewResponse {
@@ -53,6 +54,17 @@ const publishedTalks = computed(() => {
 
 const recentTalks = computed(() => publishedTalks.value.slice(0, 4));
 const topMembers = computed(() => (overview.value?.leaderboard ?? []).slice(0, 3));
+const leaderboardPreviewMembers = computed(() => {
+  const members = topMembers.value;
+
+  if (members.length > 0) return members;
+
+  return [
+    { user_id: 'preview-1', nickname: 'First meetup player', rank: 1, total_score: 0, streak_count: 0 },
+    { user_id: 'preview-2', nickname: 'Speaker streak', rank: 2, total_score: 0, streak_count: 0 },
+    { user_id: 'preview-3', nickname: 'Community regular', rank: 3, total_score: 0, streak_count: 0 },
+  ];
+});
 const layeredMeetupPhotos = computed(() => {
   return meetupPhotos.map((photo, index) => ({
     ...photo,
@@ -71,9 +83,9 @@ function memberSeed(member: LeaderboardEntry): string {
 }
 
 function memberMedal(rank: number): string {
-  if (rank === 1) return '🥇';
-  if (rank === 2) return '🥈';
-  if (rank === 3) return '🥉';
+  if (rank === 1) return '01';
+  if (rank === 2) return '02';
+  if (rank === 3) return '03';
   return `#${rank}`;
 }
 
@@ -89,7 +101,7 @@ function rotateMeetupPhotos() {
   meetupPhotoShiftTimer = window.setTimeout(() => {
     activeMeetupPhoto.value = nextMeetupPhoto;
     isMeetupPhotoShifting.value = false;
-  }, 620);
+  }, 280);
 }
 
 onMounted(async () => {
@@ -107,7 +119,7 @@ onMounted(async () => {
 
   const shouldReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (!shouldReduceMotion) {
-    meetupPhotoTimer = window.setInterval(rotateMeetupPhotos, 4200);
+    meetupPhotoTimer = window.setInterval(rotateMeetupPhotos, 3600);
   }
 });
 
@@ -123,40 +135,38 @@ onUnmounted(() => {
 
 <template>
   <div class="editorial-page">
-    <div class="relative overflow-hidden border-b border-dc-yellow/10">
-      <div class="absolute inset-0 bg-gradient-to-br from-dc-dark-1 via-dc-dark to-dc-dark opacity-70" />
+    <div class="relative overflow-hidden border-b-2 border-dc-ink">
+      <div class="absolute inset-0 bg-dc-cream" />
       <div
-        class="absolute inset-0 opacity-70"
+        class="absolute inset-0 opacity-100"
         style="
           background-image:
-            linear-gradient(rgba(249, 225, 94, 0.035) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(249, 225, 94, 0.035) 1px, transparent 1px);
+            linear-gradient(rgba(17, 17, 17, 0.055) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(17, 17, 17, 0.055) 1px, transparent 1px);
           background-size: 44px 44px;
         "
       />
 
       <div class="relative mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1.2fr_0.8fr] lg:px-8 lg:py-20">
-        <div v-if="loading" class="font-mono text-sm uppercase tracking-[0.25em] text-dc-gray-light">
-          Loading DevCon-Comm...
-        </div>
+        <ViewSkeleton v-if="loading" variant="dashboard" class="lg:col-span-2" />
 
-        <div v-else-if="error" class="max-w-xl border border-red-500/70 bg-red-950/30 p-6 font-mono text-red-100">
+        <div v-else-if="error" class="max-w-xl border-2 border-dc-ink bg-dc-paper p-6 font-mono text-dc-pink shadow-[3px_3px_0_#111111]">
           {{ error }}
         </div>
 
         <template v-else>
           <section>
-            <div class="mb-6 inline-flex items-center gap-2 border border-dc-yellow/30 bg-dc-dark-2/80 px-3 py-2 font-mono text-xs uppercase tracking-[0.22em] text-dc-yellow">
-              <span class="size-1.5 bg-dc-yellow" />
+            <div class="mb-6 inline-flex items-center gap-2 border-2 border-dc-ink bg-dc-yellow px-3 py-2 font-mono text-xs uppercase tracking-[0.22em] text-dc-ink shadow-[2px_2px_0_#111111]">
+              <span class="size-1.5 bg-dc-pink" />
               Community tech talks
             </div>
 
-            <h1 class="font-mono text-5xl font-black leading-none tracking-tight text-white sm:text-7xl lg:text-8xl">
+            <h1 class="font-mono text-5xl font-black leading-none tracking-tight text-dc-ink sm:text-7xl lg:text-8xl">
               <span>DEV</span><span class="text-dc-yellow">::</span><span>CON</span><span class="text-dc-gray">[]</span>
             </h1>
 
-            <p class="mt-7 max-w-2xl text-xl font-medium leading-8 text-dc-gray-light">
-              A community-run space for talks, live quizzes, shared slides, and reputation earned by showing up.
+            <p class="mt-7 max-w-2xl text-xl font-medium leading-8 text-dc-gray">
+              A community-run space for talks, event archives, speaker slide links, and monthly meetup operations.
             </p>
 
             <div class="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -166,15 +176,8 @@ onUnmounted(() => {
               >
                 {{ cfpOpenEvent ? 'Submit a Talk' : 'Explore Talks' }}
               </RouterLink>
-              <RouterLink
-                v-if="overview?.activeSession"
-                :to="`/play/${overview.activeSession.join_code}`"
-                class="editorial-secondary-action border-dc-yellow text-dc-yellow"
-              >
-                Join Live Quiz
-              </RouterLink>
               <RouterLink to="/leaderboard" class="editorial-secondary-action">
-                See Rankings
+                Rankings Preview
               </RouterLink>
             </div>
           </section>
@@ -198,7 +201,7 @@ onUnmounted(() => {
                     photo.layer === 2 ? 'meetup-photo-print--back' : '',
                   ]"
                 >
-                  <div class="aspect-[16/10] overflow-hidden bg-dc-dark">
+                  <div class="aspect-[16/10] overflow-hidden bg-dc-ink">
                     <img
                       :src="photo.src"
                       :alt="photo.layer === 0 ? photo.alt : ''"
@@ -219,25 +222,20 @@ onUnmounted(() => {
     </div>
 
     <div v-if="!loading && !error" class="editorial-wrap">
-      <section class="grid gap-4 sm:grid-cols-3">
+      <section class="grid gap-4 sm:grid-cols-2">
         <article class="editorial-panel p-5">
           <p class="editorial-eyebrow">events</p>
-          <p class="font-mono text-4xl font-bold text-dc-yellow">{{ completedEvents.length }}</p>
-          <p class="mt-2 text-sm text-dc-gray-light">completed community nights</p>
+          <p class="font-mono text-4xl font-bold text-dc-ink">{{ completedEvents.length }}</p>
+          <p class="mt-2 text-sm text-dc-gray">completed community nights</p>
         </article>
         <article class="editorial-panel p-5">
           <p class="editorial-eyebrow">talks</p>
-          <p class="font-mono text-4xl font-bold text-dc-yellow">{{ publishedTalks.length }}</p>
-          <p class="mt-2 text-sm text-dc-gray-light">published sessions in the archive</p>
-        </article>
-        <article class="editorial-panel p-5">
-          <p class="editorial-eyebrow">players</p>
-          <p class="font-mono text-4xl font-bold text-dc-yellow">{{ topMembers.length }}</p>
-          <p class="mt-2 text-sm text-dc-gray-light">ranked members with quiz points</p>
+          <p class="font-mono text-4xl font-bold text-dc-ink">{{ publishedTalks.length }}</p>
+          <p class="mt-2 text-sm text-dc-gray">published sessions in the archive</p>
         </article>
       </section>
 
-      <section class="mt-12 grid items-start gap-8 lg:grid-cols-[1fr_360px]">
+      <section class="mt-8 grid items-start gap-8 lg:grid-cols-[1fr_360px]">
         <div>
           <div class="editorial-header mb-6">
             <p class="editorial-eyebrow">from the archive</p>
@@ -245,8 +243,8 @@ onUnmounted(() => {
           </div>
 
           <div v-if="recentTalks.length === 0" class="editorial-panel p-8">
-            <h3 class="text-xl font-black text-white">No published talks yet</h3>
-            <p class="mt-2 text-dc-gray-light">When talks are published, this becomes the front-page reading list.</p>
+            <h3 class="text-xl font-black text-dc-ink">No published talks yet</h3>
+            <p class="mt-2 text-dc-gray">When talks are published, this becomes the front-page reading list.</p>
           </div>
 
           <div v-else class="space-y-3">
@@ -254,33 +252,34 @@ onUnmounted(() => {
               v-for="talk in recentTalks"
               :key="talk.id"
               :to="`/archive/${talk.event_id}`"
-              class="motion-colors group block border-b border-dc-yellow/10 py-5 hover:border-dc-yellow/40"
+              class="motion-colors group block border-b-2 border-dc-border py-5 hover:border-dc-ink"
             >
-              <p class="font-mono text-xs font-semibold uppercase tracking-[0.2em] text-dc-yellow">
+              <p class="font-mono text-xs font-semibold uppercase tracking-[0.2em] text-dc-pink">
                 {{ talk.topic || 'General' }}
               </p>
-              <h3 class="mt-2 text-2xl font-black tracking-tight text-white group-hover:text-dc-yellow">
+              <h3 class="mt-2 text-2xl font-black tracking-tight text-dc-ink group-hover:text-dc-pink">
                 {{ talk.title }}
               </h3>
-              <p class="mt-2 text-sm text-dc-gray-light">
+              <p class="mt-2 text-sm text-dc-gray">
                 {{ talk.speaker_name }} <span v-if="eventForTalk(talk)">· {{ eventForTalk(talk)?.name }}</span>
               </p>
             </RouterLink>
           </div>
         </div>
 
-        <aside class="editorial-panel self-start p-6">
-          <p class="editorial-eyebrow">community kahoot board</p>
-          <h2 class="mb-5 text-2xl font-black tracking-tight text-white">Top Members</h2>
-          <div v-if="topMembers.length === 0" class="text-sm text-dc-gray-light">
-            Quiz points will show up here after the next live session.
+        <aside class="editorial-panel coming-soon-card self-start p-6 pt-12">
+          <div class="community-masthead-ribbon">Coming soon</div>
+          <p class="editorial-eyebrow">community board</p>
+          <h2 class="mb-5 text-2xl font-black tracking-tight text-dc-ink">Top Members</h2>
+          <div v-if="topMembers.length === 0" class="mb-4 text-sm text-dc-gray">
+            Rankings will come back once the live quiz feature is ready for community sessions.
           </div>
-          <ol v-else class="space-y-4">
-            <li v-for="member in topMembers" :key="member.user_id || member.nickname" class="flex items-center gap-4 border-b border-dc-yellow/10 pb-4 last:border-b-0 last:pb-0">
-              <span class="w-9 shrink-0 text-3xl leading-none" :aria-label="`Rank ${member.rank}`">{{ memberMedal(member.rank) }}</span>
+          <ol class="space-y-4">
+            <li v-for="member in leaderboardPreviewMembers" :key="member.user_id || member.nickname" class="flex items-center gap-4 border-b-2 border-dc-border pb-4 opacity-70 last:border-b-0 last:pb-0">
+              <span class="w-9 shrink-0 font-mono text-xl font-black leading-none text-dc-pink" :aria-label="`Rank ${member.rank}`">{{ memberMedal(member.rank) }}</span>
               <NaviiAvatar :seed="memberSeed(member)" :title="`${member.nickname} avatar`" :size="44" />
               <div class="min-w-0">
-                <p class="truncate font-bold text-white">{{ member.nickname }}</p>
+                <p class="truncate font-bold text-dc-ink">{{ member.nickname }}</p>
                 <p class="font-mono text-xs uppercase tracking-wide text-dc-gray">community member</p>
               </div>
             </li>

@@ -1,113 +1,66 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { getDeviceId } from '@/src/device';
-
-const router = useRouter();
-const joinCode = ref('');
-const nickname = ref('');
-const joining = ref(false);
-const error = ref<string | null>(null);
-const quizAvailable = ref<boolean | null>(null);
-
-onMounted(async () => {
-  try {
-    const response = await fetch('/api/quiz/active');
-    const data = await response.json();
-    quizAvailable.value = Boolean(data.available);
-  } catch {
-    quizAvailable.value = false;
-  }
-});
-
-async function joinQuiz() {
-  joining.value = true;
-  error.value = null;
-
-  try {
-    const code = joinCode.value.toUpperCase();
-    const response = await fetch('/api/quiz/join', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        join_code: code,
-        nickname: nickname.value,
-        device_id: getDeviceId(),
-      }),
-    });
-
-    if (response.ok) {
-      localStorage.setItem('quiz-nickname', nickname.value);
-      await router.push(`/play/${code}`);
-    } else {
-      const data = await response.json();
-      error.value = data.error || 'Failed to join quiz';
-    }
-  } catch {
-    error.value = 'Connection error. Please try again.';
-  } finally {
-    joining.value = false;
-  }
-}
+import CommunityMasthead from '@/src/components/CommunityMasthead.vue';
+const mastheadStats = [
+  { value: 'Soon', label: 'quiz', tone: 'yellow' as const },
+  { value: '5MB', label: 'future PDF cap', tone: 'info' as const },
+  { value: 'Links', label: 'slides', tone: 'warm' as const },
+];
 </script>
 
 <template>
-  <div class="relative flex min-h-screen items-center justify-center bg-dc-dark px-4">
-    <div
-      class="absolute inset-0 opacity-20"
-      style="
-        background-image:
-          linear-gradient(rgba(249, 225, 94, 0.1) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(249, 225, 94, 0.1) 1px, transparent 1px);
-        background-size: 50px 50px;
-      "
-    />
-
-    <div v-if="quizAvailable === null" class="relative text-center">
-      <div class="motion-spinner mb-4 inline-block size-16 rounded-full border-4 border-dc-yellow border-t-transparent" />
-      <p class="text-lg text-white">Loading...</p>
+  <div class="editorial-page">
+    <div class="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
+      <CommunityMasthead
+        eyebrow="live quiz"
+        title="Play"
+        description="Live quiz is coming soon after the low-cost launch foundations are stable."
+        :stats="mastheadStats"
+      />
     </div>
 
-    <div v-else-if="!quizAvailable" class="relative max-w-2xl text-center">
-      <h1 class="mb-8 select-none text-9xl font-black leading-none text-dc-yellow/20 sm:text-[12rem]">404</h1>
-      <h2 class="mb-4 text-3xl font-black text-white sm:text-4xl">Page Not <span class="text-dc-yellow">Found</span></h2>
-      <p class="mb-2 text-lg text-dc-gray-light">This page is only available when there's an active quiz session.</p>
-      <p class="mb-8 text-sm text-dc-gray">The host hasn't started a quiz yet. Come back when the game is live.</p>
-      <RouterLink to="/" class="motion-press inline-block bg-dc-yellow px-8 py-4 font-bold uppercase tracking-wide text-dc-dark hover:shadow-glow">
-        Back to Home
-      </RouterLink>
-    </div>
+    <section class="editorial-wrap flex items-center pb-10 lg:pb-14">
+      <div class="grid w-full gap-8 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-end">
+        <div>
+          <p class="editorial-eyebrow">coming soon</p>
+          <div class="mt-4 border-b-2 border-dc-ink pb-7">
+            <h1 class="max-w-4xl text-5xl font-black leading-none tracking-tight text-dc-ink sm:text-6xl lg:text-7xl">
+              Live quiz is paused for phase one.
+            </h1>
+          </div>
+          <p class="mt-6 max-w-2xl text-lg leading-8 text-dc-gray">
+            We are keeping the quiz path, but it is not part of the first low-cost launch. Events, CFP, speaker slide links, feedback, and attendance CSVs come first.
+          </p>
 
-    <div v-else class="relative w-full max-w-md">
-      <div class="absolute -left-4 -top-4 size-20 border-l-4 border-t-4 border-dc-yellow/50" />
-      <div class="absolute -right-4 -top-4 size-20 border-r-4 border-t-4 border-dc-yellow/50" />
-      <div class="absolute -bottom-4 -left-4 size-20 border-b-4 border-l-4 border-dc-yellow/50" />
-      <div class="absolute -bottom-4 -right-4 size-20 border-b-4 border-r-4 border-dc-yellow/50" />
-
-      <div class="border-2 border-dc-yellow bg-dc-dark-1 p-8 shadow-glow sm:p-12">
-        <div class="mb-8 text-center">
-          <div class="mb-4 inline-block bg-dc-yellow px-3 py-1 font-mono text-xs font-bold text-dc-dark">QUIZ ENTRY POINT</div>
-          <h1 class="mb-2 font-mono text-3xl font-bold text-white sm:text-4xl">JOIN <span class="text-dc-yellow">QUIZ</span></h1>
-          <p class="font-mono text-sm text-dc-gray">Enter the code displayed on screen</p>
+          <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+            <RouterLink to="/events" class="editorial-action">
+              View Events
+            </RouterLink>
+            <RouterLink to="/my-talks" class="editorial-secondary-action">
+              Speaker Desk
+            </RouterLink>
+          </div>
         </div>
 
-        <form class="space-y-6" @submit.prevent="joinQuiz">
-          <div>
-            <label class="mb-2 block font-mono text-xs font-bold uppercase text-dc-yellow">Quiz Code</label>
-            <input v-model="joinCode" required maxlength="6" placeholder="ABC123" class="motion-colors w-full border-2 border-dc-dark-3 bg-dc-dark-2 px-4 py-4 text-center font-mono text-3xl font-bold uppercase tracking-widest text-white outline-none focus:border-dc-yellow" @input="joinCode = joinCode.toUpperCase()" />
+        <aside class="overflow-hidden rounded-lg border-2 border-dc-ink bg-dc-paper shadow-[3px_3px_0_#111111]">
+          <div class="border-b-2 border-dc-ink bg-dc-yellow px-5 py-4">
+            <p class="font-mono text-xs font-black uppercase tracking-[0.22em] text-dc-ink">What this means</p>
           </div>
-          <div>
-            <label class="mb-2 block font-mono text-xs font-bold uppercase text-dc-yellow">Your Nickname</label>
-            <input v-model="nickname" required maxlength="20" placeholder="QuizMaster" class="motion-colors w-full border-2 border-dc-dark-3 bg-dc-dark-2 px-4 py-3 font-mono text-white outline-none focus:border-dc-yellow" />
+          <div class="divide-y divide-dc-border">
+            <div class="px-5 py-5">
+              <p class="font-mono text-sm font-black uppercase tracking-wide text-dc-ink">Cost-first launch</p>
+              <p class="mt-2 text-sm leading-6 text-dc-gray">Realtime rooms can wait until the community needs them.</p>
+            </div>
+            <div class="px-5 py-5">
+              <p class="font-mono text-sm font-black uppercase tracking-wide text-dc-ink">Feature path preserved</p>
+              <p class="mt-2 text-sm leading-6 text-dc-gray">The code remains in the repo so we can revive it deliberately.</p>
+            </div>
+            <div class="px-5 py-5">
+              <p class="font-mono text-sm font-black uppercase tracking-wide text-dc-ink">No file storage pressure</p>
+              <p class="mt-2 text-sm leading-6 text-dc-gray">Slides stay as links, and future quiz PDFs stay small.</p>
+            </div>
           </div>
-          <div v-if="error" class="border-2 border-red-500 bg-red-900/30 p-4">
-            <p class="font-mono text-sm text-red-400">{{ error }}</p>
-          </div>
-          <button type="submit" :disabled="joining || !joinCode || !nickname" class="motion-press group relative w-full overflow-hidden bg-dc-yellow py-4 font-mono text-lg font-bold uppercase tracking-wide text-dc-dark hover:shadow-glow disabled:cursor-not-allowed disabled:opacity-50">
-            {{ joining ? 'JOINING...' : 'ENTER QUIZ' }}
-          </button>
-        </form>
+        </aside>
       </div>
-    </div>
+    </section>
   </div>
 </template>

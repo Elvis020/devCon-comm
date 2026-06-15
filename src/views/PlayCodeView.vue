@@ -16,6 +16,7 @@ const showNicknamePrompt = ref(false);
 const selectedAnswer = ref<number | null>(null);
 const submitting = ref(false);
 const now = ref(Date.now());
+const quizPaused = true;
 
 let pollTimer: number | undefined;
 let clockTimer: number | undefined;
@@ -103,6 +104,11 @@ async function submitAnswer(answerIndex: number) {
 }
 
 onMounted(async () => {
+  if (quizPaused) {
+    joining.value = false;
+    return;
+  }
+
   clockTimer = window.setInterval(() => {
     now.value = Date.now();
   }, 250);
@@ -110,7 +116,7 @@ onMounted(async () => {
   const activeResponse = await fetch('/api/quiz/active');
   const active = await activeResponse.json();
   if (!active.has_active_quiz) {
-    joinError.value = 'No active quiz available';
+    joinError.value = 'No live quiz is available right now';
     joining.value = false;
     return;
   }
@@ -131,58 +137,101 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-dc-dark">
-    <div v-if="showNicknamePrompt" class="flex min-h-screen items-center justify-center px-4">
-      <form class="w-full max-w-md border-4 border-dc-yellow bg-dc-dark-1 p-8 shadow-glow sm:p-12" @submit.prevent="submitNickname">
-        <div class="mb-8 text-center">
-          <h1 class="mb-2 text-3xl font-black text-white sm:text-4xl">Welcome to the <span class="text-dc-yellow">Quiz</span></h1>
-          <p class="text-dc-gray-light">Enter your nickname to join</p>
+  <div class="min-h-screen bg-dc-cream text-dc-ink">
+    <div class="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+      <section class="coming-soon-banner">
+        <div>
+          <p class="editorial-eyebrow">coming soon</p>
+          <h1 class="text-4xl font-black tracking-tight text-dc-ink sm:text-6xl">Live quiz is paused.</h1>
+          <p class="mt-3 max-w-2xl text-base leading-7 text-dc-gray">
+            This join-code route is kept for the future quiz rollout, but the first launch is focused on events, speaker slide links, attendance CSVs, and feedback.
+          </p>
+          <div class="mt-6 flex flex-wrap gap-3">
+            <RouterLink to="/events" class="editorial-action">View Events</RouterLink>
+            <RouterLink to="/" class="editorial-secondary-action">Home</RouterLink>
+          </div>
         </div>
-        <label class="mb-2 block text-sm font-bold uppercase tracking-wide text-dc-yellow">Your Nickname</label>
-        <input v-model="nicknameInput" required maxlength="20" autofocus class="mb-6 w-full border-2 border-dc-dark-3 bg-dc-dark-2 px-4 py-4 text-xl text-white outline-none focus:border-dc-yellow" />
-        <button type="submit" class="w-full bg-dc-yellow py-4 text-lg font-bold uppercase tracking-wide text-dc-dark hover:shadow-glow">Join Quiz</button>
+      </section>
+    </div>
+    <div class="hidden">
+    <div v-if="showNicknamePrompt" class="flex min-h-screen items-center justify-center px-4">
+      <form class="w-full max-w-md rounded-lg border-2 border-dc-ink bg-dc-paper p-8 shadow-[3px_3px_0_#111111] sm:p-12" @submit.prevent="submitNickname">
+        <div class="mb-8 text-center">
+          <h1 class="mb-2 text-3xl font-black text-dc-ink sm:text-4xl">Welcome to the <span class="text-dc-pink">Quiz</span></h1>
+          <p class="text-dc-gray">Enter your nickname to join</p>
+        </div>
+        <label class="mb-2 block text-sm font-bold uppercase tracking-wide text-dc-ink">Your Nickname</label>
+        <input v-model="nicknameInput" required maxlength="20" autofocus class="mb-6 w-full rounded-md border-2 border-dc-ink bg-dc-paper px-4 py-4 text-xl text-dc-ink outline-none focus:border-dc-pink" />
+        <button type="submit" class="w-full rounded-md border-2 border-dc-ink bg-dc-pink py-4 text-lg font-bold uppercase tracking-wide text-white shadow-[2px_2px_0_#111111]">Join Quiz</button>
       </form>
     </div>
 
-    <div v-else-if="joinError" class="flex h-full min-h-screen items-center justify-center px-4">
-      <div class="max-w-2xl text-center">
-        <h1 class="mb-8 select-none text-9xl font-black leading-none text-dc-yellow/20 sm:text-[12rem]">404</h1>
-        <h2 class="mb-4 text-3xl font-black text-white sm:text-4xl">Quiz Not <span class="text-dc-yellow">Found</span></h2>
-        <p class="mb-8 text-lg text-dc-gray-light">{{ joinError }}</p>
-        <RouterLink to="/play" class="motion-press inline-block bg-dc-yellow px-8 py-4 font-bold uppercase tracking-wide text-dc-dark hover:shadow-glow">Try Another Code</RouterLink>
+    <div v-else-if="joinError" class="editorial-wrap flex min-h-[calc(100vh-6rem)] items-center py-10 lg:py-14">
+      <div class="grid w-full gap-8 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-end">
+        <div>
+          <p class="editorial-eyebrow">quiz room</p>
+          <div class="mt-4 border-b-2 border-dc-ink pb-7">
+            <h1 class="max-w-4xl text-5xl font-black leading-none tracking-tight text-dc-ink sm:text-6xl lg:text-7xl">
+              This quiz is not open.
+            </h1>
+          </div>
+          <p class="mt-6 max-w-2xl text-lg leading-8 text-dc-gray">
+            {{ joinError }}. The host may not have opened the lobby yet, or this code may be from another meetup.
+          </p>
+          <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+            <RouterLink to="/play" class="editorial-action">Try Another Code</RouterLink>
+            <RouterLink to="/events" class="editorial-secondary-action">View Events</RouterLink>
+          </div>
+        </div>
+
+        <aside class="overflow-hidden rounded-lg border-2 border-dc-ink bg-dc-paper shadow-[3px_3px_0_#111111]">
+          <div class="border-b-2 border-dc-ink bg-dc-yellow px-5 py-4">
+            <p class="font-mono text-xs font-black uppercase tracking-[0.22em] text-dc-ink">Quick check</p>
+          </div>
+          <div class="divide-y divide-dc-border">
+            <div class="px-5 py-5">
+              <p class="font-mono text-sm font-black uppercase tracking-wide text-dc-ink">Ask the host</p>
+              <p class="mt-2 text-sm leading-6 text-dc-gray">The lobby must be open before players can join.</p>
+            </div>
+            <div class="px-5 py-5">
+              <p class="font-mono text-sm font-black uppercase tracking-wide text-dc-ink">Check the code</p>
+              <p class="mt-2 text-sm leading-6 text-dc-gray">Quiz codes are short and change per session.</p>
+            </div>
+          </div>
+        </aside>
       </div>
     </div>
 
     <div v-else-if="joining || !state" class="flex min-h-screen items-center justify-center p-4">
       <div class="text-center">
         <div class="motion-spinner mb-4 inline-block size-20 rounded-full border-4 border-dc-yellow border-t-transparent" />
-        <p class="text-xl text-white">{{ joining ? 'Joining quiz...' : 'Connecting...' }}</p>
+        <p class="text-xl text-dc-ink">{{ joining ? 'Joining quiz...' : 'Connecting...' }}</p>
       </div>
     </div>
 
     <div v-else-if="state.session.status === 'waiting' || state.session.status === 'draft'" class="flex min-h-screen items-center justify-center p-6">
       <div class="w-full max-w-sm text-center">
         <div class="relative mb-12">
-          <div class="mx-auto flex size-40 items-center justify-center border-4 border-dc-yellow bg-dc-dark-1 shadow-glow">
-            <span class="font-mono text-6xl text-dc-yellow">...</span>
+          <div class="mx-auto flex size-40 items-center justify-center rounded-lg border-2 border-dc-ink bg-dc-paper shadow-[3px_3px_0_#111111]">
+            <span class="font-mono text-6xl text-dc-pink">...</span>
           </div>
         </div>
-        <h1 class="mb-8 font-mono text-5xl font-bold text-white">WAITING...</h1>
-        <div class="mb-8 inline-block border-4 border-dc-yellow bg-dc-dark-1 px-8 py-6">
+        <h1 class="mb-8 font-mono text-5xl font-bold text-dc-ink">WAITING...</h1>
+        <div class="mb-8 inline-block rounded-lg border-2 border-dc-ink bg-dc-yellow px-8 py-6 shadow-[3px_3px_0_#111111]">
           <div class="mb-2 font-mono text-sm uppercase tracking-wider text-dc-gray">Players Connected</div>
-          <div class="font-mono text-6xl font-bold tabular-nums text-dc-yellow">{{ state.participants_count }}</div>
+          <div class="font-mono text-6xl font-bold tabular-nums text-dc-ink">{{ state.participants_count }}</div>
         </div>
-        <p class="font-mono text-dc-gray-light">Waiting for host to start</p>
+        <p class="font-mono text-dc-gray">Waiting for host to start</p>
       </div>
     </div>
 
     <div v-else-if="state.session.status === 'finished'" class="flex min-h-screen items-center justify-center p-4 py-12">
       <div class="w-full max-w-lg">
         <div class="mb-8 text-center">
-          <div class="mb-8 inline-block bg-dc-yellow px-6 py-3 font-mono text-sm font-bold uppercase tracking-wide text-dc-dark">Quiz Complete</div>
-          <div class="mb-6 border-4 border-dc-dark-3 bg-dc-dark-1 p-10">
+          <div class="mb-8 inline-block rounded-md border-2 border-dc-ink bg-dc-yellow px-6 py-3 font-mono text-sm font-bold uppercase tracking-wide text-dc-ink shadow-[2px_2px_0_#111111]">Quiz Complete</div>
+          <div class="mb-6 rounded-lg border-2 border-dc-ink bg-dc-paper p-10 shadow-[3px_3px_0_#111111]">
             <div class="mb-3 font-mono text-sm font-bold uppercase tracking-wider text-dc-gray">Final Score</div>
-            <div class="font-mono text-6xl font-bold tabular-nums text-white">
+            <div class="font-mono text-6xl font-bold tabular-nums text-dc-ink">
               {{ state.leaderboard.find((entry) => entry.user_id === userId)?.total_score ?? 0 }}
             </div>
           </div>
@@ -193,13 +242,13 @@ onUnmounted(() => {
     <div v-else-if="state.session.question_phase === 'scoreboard'" class="flex min-h-screen items-center justify-center p-6">
       <div class="w-full max-w-lg">
         <div class="mb-8 text-center">
-          <div class="mb-6 inline-block bg-dc-yellow px-6 py-3 font-mono text-sm font-bold uppercase tracking-wide text-dc-dark">Scoreboard</div>
-          <h2 class="mb-2 font-mono text-3xl font-bold text-white">RANKINGS</h2>
+          <div class="mb-6 inline-block rounded-md border-2 border-dc-ink bg-dc-yellow px-6 py-3 font-mono text-sm font-bold uppercase tracking-wide text-dc-ink shadow-[2px_2px_0_#111111]">Scoreboard</div>
+          <h2 class="mb-2 font-mono text-3xl font-bold text-dc-ink">RANKINGS</h2>
           <p class="font-mono text-sm text-dc-gray">After Question {{ state.session.current_question_index + 1 }}</p>
         </div>
-        <div class="mb-6 border-4 border-dc-yellow/30 bg-dc-dark-1">
-          <div class="divide-y-2 divide-dc-dark-3">
-            <div v-for="(player, index) in state.leaderboard.slice(0, 5)" :key="player.user_id" class="flex items-center justify-between px-6 py-5" :class="player.user_id === userId ? 'bg-dc-yellow text-dc-dark shadow-glow' : 'bg-dc-dark-1 text-white'">
+        <div class="mb-6 rounded-lg border-2 border-dc-ink bg-dc-paper shadow-[3px_3px_0_#111111]">
+          <div class="divide-y-2 divide-dc-border">
+            <div v-for="(player, index) in state.leaderboard.slice(0, 5)" :key="player.user_id" class="flex items-center justify-between px-6 py-5" :class="player.user_id === userId ? 'bg-dc-yellow text-dc-ink' : 'bg-dc-paper text-dc-ink'">
               <div class="flex items-center gap-4">
                 <span class="min-w-12 font-mono text-3xl font-bold tabular-nums">#{{ index + 1 }}</span>
                 <span class="font-mono text-lg font-bold">{{ player.nickname }}</span>
@@ -222,22 +271,22 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div v-else class="flex min-h-screen flex-col bg-dc-dark">
-      <div class="h-4 border-b-4 border-dc-dark-2 bg-dc-dark-3">
+    <div v-else class="flex min-h-screen flex-col bg-dc-cream">
+      <div class="h-4 border-b-2 border-dc-ink bg-dc-border">
         <div class="h-full" :class="progress > 50 ? 'bg-dc-yellow' : progress > 20 ? 'bg-orange-500' : 'bg-red-500'" :style="{ width: `${progress}%` }" />
       </div>
 
       <div class="flex flex-1 flex-col justify-center p-4 pb-6">
         <div class="mb-8 text-center">
-          <div class="mb-6 inline-block border-2 border-dc-yellow/30 bg-dc-dark-2 px-4 py-2 font-mono text-xs uppercase tracking-wide text-dc-gray">
+          <div class="mb-6 inline-block rounded-md border-2 border-dc-ink bg-dc-paper px-4 py-2 font-mono text-xs uppercase tracking-wide text-dc-gray shadow-[2px_2px_0_#111111]">
             Question {{ state.session.current_question_index + 1 }}
           </div>
-          <div class="font-mono text-9xl font-bold tabular-nums text-dc-yellow">{{ remaining }}</div>
+          <div class="font-mono text-9xl font-bold tabular-nums text-dc-pink">{{ remaining }}</div>
           <div class="mt-2 font-mono text-sm uppercase tracking-wider text-dc-gray">Seconds Remaining</div>
         </div>
 
         <div v-if="state.player_result" class="mb-8 text-center">
-          <div class="inline-block bg-dc-yellow px-8 py-5 font-mono text-2xl font-bold text-dc-dark shadow-glow">ANSWER LOCKED IN</div>
+          <div class="inline-block rounded-md border-2 border-dc-ink bg-dc-yellow px-8 py-5 font-mono text-2xl font-bold text-dc-ink shadow-[2px_2px_0_#111111]">ANSWER LOCKED IN</div>
           <div class="mt-4 font-mono text-sm text-dc-gray">{{ state.answers_count }} / {{ state.participants_count }} players answered</div>
         </div>
 
@@ -254,6 +303,7 @@ onUnmounted(() => {
           </button>
         </div>
       </div>
+    </div>
     </div>
   </div>
 </template>
