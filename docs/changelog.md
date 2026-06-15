@@ -9,9 +9,11 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 
 - Locked the app shell to the visual viewport so document/body overscroll no longer creates phantom vertical scrolling after route content ends.
 - Tightened the route-stack height contract so short mobile pages fill the app scroll area instead of leaving blank space below their content.
-- Compacted the mobile app header rhythm while preserving 44px navigation targets and adding a clearer horizontal-scroll affordance for the primary nav.
-- Compactly fitted the mobile My Talks and empty Leaderboard routes within common small-device heights, with My Talks now opening directly on the speaker email card on phones.
-- Made the mobile route-feedback page task-first after launcher taps so the feedback form starts near the top of the viewport.
+- Replaced the desktop-style mobile nav strip with a compact hamburger header and full-screen mobile menu while preserving accessible 44px+ navigation targets.
+- Tightened the full-screen mobile menu with denser navigation rows and a bottom feedback/footer area so the panel no longer ends with unused empty space.
+- Compactly fitted the mobile My Talks and empty Leaderboard routes within common small-device heights, with My Talks centered on roomy phones and kept top-safe on short screens.
+- Made the mobile route-feedback page center after launcher taps on roomy phones while falling back to top-safe placement when the form is taller than the viewport.
+- Simplified the mobile 404 route into a centered recovery card without the desktop suggestion stack, keeping unknown routes non-scrollable on common phone sizes.
 - Hid prototype leaderboard account tools unless leaderboard scoring is enabled and both all-time and monthly leaderboard data are present, keeping empty states focused until live quiz scoring is ready.
 - Reduced feedback launcher prominence with route-view interval gating and mobile routing to a standalone `/feedback` page instead of an overlay.
 - Added the `/feedback` route to documentation and noted the mobile feedback behavior for community testers.

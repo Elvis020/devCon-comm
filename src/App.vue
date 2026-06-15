@@ -22,6 +22,7 @@ const router = useRouter();
 const quizAvailable = ref(false);
 const adminEventNames = ref<Record<string, string>>({});
 const routeTransitionName = ref('page');
+const mobileMenuOpen = ref(false);
 const logoSrc = '/brand/dev-con-logo.png';
 const showOrganizerLink = import.meta.env.VITE_SHOW_ORGANIZER_LINK !== 'false';
 let quizAvailabilityInterval: number | undefined;
@@ -232,7 +233,16 @@ function linkClass(link: NavLink) {
   return 'border-transparent text-dc-gray hover:border-dc-border hover:bg-dc-paper-warm hover:text-dc-ink';
 }
 
+function closeMobileMenu() {
+  mobileMenuOpen.value = false;
+}
+
+function toggleMobileMenu() {
+  mobileMenuOpen.value = !mobileMenuOpen.value;
+}
+
 async function logout() {
+  closeMobileMenu();
   await fetch('/api/auth/logout', { method: 'POST' });
   await router.push('/');
 }
@@ -266,6 +276,7 @@ onMounted(() => {
 });
 
 watch(() => route.path, (toPath, fromPath) => {
+  closeMobileMenu();
   updateRouteTransition(toPath, fromPath);
   void refreshAdminEventNames();
 });
@@ -307,6 +318,22 @@ onUnmounted(() => {
           </button>
         </div>
 
+        <button
+          class="app-mobile-menu-toggle motion-press hidden min-h-11 items-center justify-center rounded-md border-2 border-dc-ink bg-dc-paper px-3 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-dc-ink shadow-[2px_2px_0_#111111]"
+          type="button"
+          :aria-expanded="mobileMenuOpen"
+          aria-controls="mobile-menu-panel"
+          aria-label="Open navigation menu"
+          @click="toggleMobileMenu"
+        >
+          <span class="app-mobile-menu-icon" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </span>
+          <span>Menu</span>
+        </button>
+
         <nav class="app-primary-nav col-span-2 flex min-w-0 items-center gap-2 overflow-x-auto font-mono text-[11px] font-semibold uppercase tracking-wide sm:gap-3 sm:text-xs lg:order-2 lg:col-span-1" aria-label="Primary">
           <template v-for="(group, groupIndex) in navGroups" :key="groupIndex">
             <RouterLink
@@ -323,6 +350,72 @@ onUnmounted(() => {
         </nav>
       </div>
     </header>
+
+    <Transition name="mobile-menu">
+      <div
+        v-if="mobileMenuOpen"
+        id="mobile-menu-panel"
+        class="app-mobile-menu"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation menu"
+        @keydown.esc="closeMobileMenu"
+      >
+        <div class="app-mobile-menu-bar">
+          <img :src="logoSrc" alt="DevCongress" class="app-mobile-menu-logo">
+          <button
+            class="app-mobile-menu-close motion-press"
+            type="button"
+            aria-label="Close navigation menu"
+            @click="closeMobileMenu"
+          >
+            <span aria-hidden="true">x</span>
+          </button>
+        </div>
+
+        <div class="app-mobile-menu-actions">
+          <RouterLink
+            v-if="showModeSwitch"
+            :to="modeSwitchLink"
+            class="app-mobile-menu-action"
+            @click="closeMobileMenu"
+          >
+            {{ modeSwitchLabel }}
+          </RouterLink>
+          <button
+            v-if="showSignOut"
+            class="app-mobile-menu-action"
+            type="button"
+            @click="logout"
+          >
+            Sign Out
+          </button>
+        </div>
+
+        <nav class="app-mobile-menu-nav" aria-label="Mobile primary">
+          <template v-for="(group, groupIndex) in navGroups" :key="groupIndex">
+            <RouterLink
+              v-for="link in group"
+              :key="link.href"
+              :to="link.href"
+              class="app-mobile-menu-link motion-press"
+              :class="{ 'app-mobile-menu-link--active': isActive(link.href), 'app-mobile-menu-link--accent': link.accent }"
+              :aria-current="isActive(link.href) ? 'page' : undefined"
+              @click="closeMobileMenu"
+            >
+              {{ link.label }}
+            </RouterLink>
+          </template>
+        </nav>
+
+        <div class="app-mobile-menu-footer">
+          <p>DevCongress Community</p>
+          <RouterLink to="/feedback" @click="closeMobileMenu">
+            Send feedback
+          </RouterLink>
+        </div>
+      </div>
+    </Transition>
 
     <nav
       v-if="showBreadcrumbs"
