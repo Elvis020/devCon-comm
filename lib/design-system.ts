@@ -8,14 +8,24 @@
 export const designSystem = {
   // Brand Colors
   colors: {
-    yellow: '#F9E15E',
-    yellowGlow: '#FFF4C4',
-    dark: '#0a0a0a',
-    dark1: '#1a1a1a',
-    dark2: '#252525',
-    dark3: '#303030',
-    gray: '#666666',
-    grayLight: '#999999',
+    yellow: '#F5E642',
+    yellowGlow: '#FFF8A8',
+    pink: '#E8117F',
+    info: '#0F766E',
+    infoSoft: '#E6F7F4',
+    success: '#15803D',
+    successSoft: '#EAF7EE',
+    cream: '#F5F2E8',
+    ink: '#111111',
+    paper: '#FFFFFF',
+    paperWarm: '#FEFCE8',
+    border: '#E0DDD4',
+    dark: '#111111',
+    dark1: '#F5F2E8',
+    dark2: '#FFFFFF',
+    dark3: '#E0DDD4',
+    gray: '#555555',
+    grayLight: '#888888',
   },
 
   // Quiz Answer Colors (functional - don't change)

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import type { ComponentPublicInstance } from 'vue';
 import { useRoute } from 'vue-router';
 import { adminPath } from '@/src/admin-routes';
 
@@ -7,17 +9,32 @@ const props = defineProps<{
 }>();
 
 const route = useRoute();
+const tabsTrack = ref<HTMLElement | null>(null);
+const tabElements = ref<HTMLElement[]>([]);
+const indicator = ref({ left: 0, width: 0, ready: false });
 
 const tabs = [
   { href: '', label: 'Overview' },
   { href: 'talks', label: 'Talks' },
   { href: 'speakers', label: 'Speakers' },
-  { href: 'quiz', label: 'Quiz' },
-  { href: 'quiz/live', label: 'Live' },
+  { href: 'attendance', label: 'Attendance' },
+  { href: 'quiz', label: 'Quiz', soon: true },
+  { href: 'feedback', label: 'Feedback' },
 ];
 
 function tabPath(href: string) {
   return href ? adminPath(`events/${props.eventId}/${href}`) : adminPath(`events/${props.eventId}`);
+}
+
+function tabTo(href: string) {
+  const from = route.query.from;
+  const path = tabPath(href);
+
+  if (from === 'attendance' || from === 'feedback') {
+    return { path, query: { from } };
+  }
+
+  return path;
 }
 
 function isActive(href: string) {
@@ -25,19 +42,73 @@ function isActive(href: string) {
   if (!href) return route.path === path;
   return route.path === path || route.path.startsWith(`${path}/`);
 }
+
+const activeIndex = computed(() => tabs.findIndex((tab) => isActive(tab.href)));
+const indicatorStyle = computed(() => ({
+  opacity: indicator.value.ready ? '1' : '0',
+  transform: `translate3d(${indicator.value.left}px, 0, 0)`,
+  width: `${indicator.value.width}px`,
+}));
+
+function setTabElement(element: Element | ComponentPublicInstance | null, index: number) {
+  if (element instanceof HTMLElement) {
+    tabElements.value[index] = element;
+    return;
+  }
+
+  if (element && !(element instanceof Element)) {
+    const componentElement = element.$el;
+    if (componentElement instanceof HTMLElement) {
+      tabElements.value[index] = componentElement;
+    }
+  }
+}
+
+function updateIndicator() {
+  const index = activeIndex.value;
+  const element = index >= 0 ? tabElements.value[index] : null;
+
+  if (!element) {
+    indicator.value = { left: 0, width: 0, ready: false };
+    return;
+  }
+
+  indicator.value = {
+    left: element.offsetLeft,
+    width: element.offsetWidth,
+    ready: true,
+  };
+}
+
+onMounted(() => {
+  void nextTick(updateIndicator);
+  window.addEventListener('resize', updateIndicator);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateIndicator);
+});
+
+watch(() => route.path, () => {
+  void nextTick(updateIndicator);
+});
 </script>
 
 <template>
-  <nav class="mb-8 overflow-x-auto border-b border-dc-yellow/10 pb-4">
-    <div class="flex min-w-max gap-2 font-mono text-xs font-bold uppercase tracking-wide">
+  <nav class="mb-5 overflow-x-auto border-b-2 border-dc-border pb-3">
+    <div ref="tabsTrack" class="admin-event-tabs-track flex min-w-max gap-2 font-mono text-xs font-bold uppercase tracking-wide">
+      <span class="admin-event-tabs-indicator" :style="indicatorStyle" aria-hidden="true" />
       <RouterLink
-        v-for="tab in tabs"
+        v-for="(tab, index) in tabs"
         :key="tab.href"
-        :to="tabPath(tab.href)"
-        class="motion-press rounded-md border px-4 py-2"
-        :class="isActive(tab.href) ? 'border-dc-yellow bg-dc-yellow text-dc-dark shadow-[0_10px_28px_rgba(249,225,94,0.16)]' : 'border-dc-yellow/10 bg-dc-yellow/[0.03] text-dc-gray-light hover:border-dc-yellow/35 hover:bg-dc-yellow/[0.06] hover:text-white'"
+        :ref="(element) => setTabElement(element, index)"
+        :to="tabTo(tab.href)"
+        class="admin-event-tab motion-press"
+        :class="isActive(tab.href) ? 'text-dc-ink' : 'border-dc-border bg-dc-paper text-dc-gray hover:border-dc-ink hover:bg-dc-paper-warm hover:text-dc-ink'"
+        :aria-current="isActive(tab.href) ? 'page' : undefined"
       >
-        {{ tab.label }}
+        <span>{{ tab.label }}</span>
+        <span v-if="tab.soon" class="admin-event-tab-soon">Soon</span>
       </RouterLink>
     </div>
   </nav>

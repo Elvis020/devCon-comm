@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import AdminEventTabs from './components/AdminEventTabs.vue';
+import AppToaster from './components/ui/AppToaster.vue';
+import FeedbackBot from './components/FeedbackBot.vue';
 import { adminPath, isAdminPath } from './admin-routes';
 
 interface NavLink {
@@ -11,24 +14,20 @@ interface NavLink {
 
 interface AdminEventSummary {
   id: string;
-  event_date: string;
-  status: string;
-}
-
-interface AdminQuizSessionSummary {
-  event_id: string;
-  status: string;
+  name: string;
 }
 
 const route = useRoute();
 const router = useRouter();
 const quizAvailable = ref(false);
-const defaultAdminEventId = ref<string | null>(null);
-const activeAdminEventIds = ref<Set<string>>(new Set());
+const adminEventNames = ref<Record<string, string>>({});
+const routeTransitionName = ref('page');
+const logoSrc = '/brand/dev-con-logo.png';
 let quizAvailabilityInterval: number | undefined;
 
 const publicLinks: NavLink[] = [
   { href: '/', label: 'Home' },
+  { href: '/events', label: 'Events' },
   { href: '/archive', label: 'Archive' },
   { href: '/leaderboard', label: 'Leaderboard' },
 ];
@@ -43,38 +42,21 @@ const playLinks: NavLink[] = [
 
 const adminLinks: NavLink[] = [
   { href: adminPath('events'), label: 'Events' },
+  { href: adminPath('attendance'), label: 'Attendance Hub' },
+  { href: adminPath('feedback'), label: 'Feedback Hub' },
 ];
 
 const isAdminRoute = computed(() => isAdminPath(route.path));
 const adminEventId = computed(() => {
   const value = route.params.eventId;
   if (Array.isArray(value)) return value[0];
-  return value || defaultAdminEventId.value;
-});
-const adminEventLinks = computed<NavLink[]>(() => {
-  if (!adminEventId.value) return [];
-
-  const links: NavLink[] = [
-    { href: adminPath(`events/${adminEventId.value}`), label: 'Overview' },
-    { href: adminPath(`events/${adminEventId.value}/talks`), label: 'Talks' },
-    { href: adminPath(`events/${adminEventId.value}/speakers`), label: 'Speakers' },
-    { href: adminPath(`events/${adminEventId.value}/quiz`), label: 'Quiz' },
-  ];
-
-  if (activeAdminEventIds.value.has(adminEventId.value)) {
-    links.push({ href: adminPath(`events/${adminEventId.value}/quiz/live`), label: 'Live' });
-  }
-
-  return links;
+  return value || null;
 });
 const primaryLinks = computed(() => (isAdminRoute.value ? adminLinks : publicLinks));
 const visiblePlayLinks = computed(() => (quizAvailable.value ? playLinks : []));
 const navGroups = computed(() => {
   if (isAdminRoute.value) {
-    return [
-      primaryLinks.value,
-      adminEventLinks.value,
-    ].filter((group) => group.length > 0);
+    return [primaryLinks.value];
   }
 
   return [
@@ -85,7 +67,27 @@ const navGroups = computed(() => {
 });
 const modeSwitchLink = computed(() => (isAdminRoute.value ? '/' : adminPath('events')));
 const modeSwitchLabel = computed(() => (isAdminRoute.value ? 'Community' : 'Organizer'));
+const adminReturnSource = computed(() => {
+  const value = route.query.from;
+  if (value === 'attendance' || value === 'feedback') return value;
+  return null;
+});
+const adminReturnLink = computed(() => {
+  if (adminReturnSource.value === 'attendance') {
+    return { href: adminPath('attendance'), label: 'Attendance Hub' };
+  }
+
+  if (adminReturnSource.value === 'feedback') {
+    return { href: adminPath('feedback'), label: 'Feedback Hub' };
+  }
+
+  return null;
+});
 const activeNavHref = computed(() => {
+  if (isAdminRoute.value && adminReturnLink.value && adminEventId.value) {
+    return adminReturnLink.value.href;
+  }
+
   return navGroups.value
     .flat()
     .filter((link) => {
@@ -94,6 +96,118 @@ const activeNavHref = computed(() => {
     })
     .sort((a, b) => b.href.length - a.href.length)[0]?.href ?? null;
 });
+const currentEventLabel = computed(() => {
+  if (!adminEventId.value) return 'Event';
+  return adminEventNames.value[adminEventId.value] ?? 'Event';
+});
+const showAdminEventTabs = computed(() => Boolean(adminEventId.value && route.path.startsWith(adminPath(`events/${adminEventId.value}`))));
+const breadcrumbItems = computed(() => {
+  const items: { label: string; href?: string }[] = [];
+  const path = route.path;
+
+  if (path === '/' || path === adminPath('login')) return items;
+
+  if (isAdminRoute.value) {
+    items.push({ label: 'Organizer', href: adminPath('events') });
+
+    if (path === adminPath('events')) {
+      items.push({ label: 'Events' });
+      return items;
+    }
+
+    if (path === adminPath('attendance')) {
+      items.push({ label: 'Attendance' });
+      return items;
+    }
+
+    if (path === adminPath('feedback')) {
+      items.push({ label: 'Feedback' });
+      return items;
+    }
+
+    if (path === adminPath('events/new')) {
+      items.push({ label: 'Events', href: adminPath('events') });
+      items.push({ label: 'Create event' });
+      return items;
+    }
+
+    if (adminEventId.value) {
+      if (adminReturnLink.value) {
+        items.push({ label: adminReturnLink.value.label, href: adminReturnLink.value.href });
+      } else {
+        items.push({ label: 'Events', href: adminPath('events') });
+      }
+
+      const eventHref = adminReturnSource.value
+        ? `${adminPath(`events/${adminEventId.value}`)}?from=${adminReturnSource.value}`
+        : adminPath(`events/${adminEventId.value}`);
+      items.push({ label: currentEventLabel.value, href: eventHref });
+
+      if (path.includes('/talks')) items.push({ label: 'Talks' });
+      else if (path.includes('/speakers')) items.push({ label: 'Speakers' });
+      else if (path.includes('/attendance')) items.push({ label: 'Attendance' });
+      else if (path.includes('/quiz/live')) items.push({ label: 'Live quiz' });
+      else if (path.includes('/quiz')) items.push({ label: 'Quiz' });
+      else if (path.includes('/feedback')) items.push({ label: 'Feedback' });
+      else items[items.length - 1] = { label: currentEventLabel.value };
+    }
+
+    return items;
+  }
+
+  items.push({ label: 'Home', href: '/' });
+
+  if (path === '/events') items.push({ label: 'Events' });
+  else if (path === '/archive') items.push({ label: 'Archive' });
+  else if (path.startsWith('/archive/')) {
+    items.push({ label: 'Archive', href: '/archive' });
+    items.push({ label: 'Event' });
+  } else if (path === '/leaderboard') items.push({ label: 'Leaderboard' });
+  else if (path === '/my-talks') items.push({ label: 'My Talks' });
+  else if (path.startsWith('/cfp/')) items.push({ label: 'Call for proposals' });
+  else if (path.startsWith('/feedback/')) items.push({ label: 'Feedback' });
+  else if (path === '/play') items.push({ label: 'Play' });
+  else if (path.startsWith('/play/')) {
+    items.push({ label: 'Play', href: '/play' });
+    items.push({ label: 'Join code' });
+  }
+
+  return items;
+});
+const showBreadcrumbs = computed(() => isAdminRoute.value && breadcrumbItems.value.length > 1);
+
+const adminEventSectionOrder = ['', 'talks', 'speakers', 'attendance', 'quiz', 'feedback'];
+
+function getAdminEventSection(path: string): { eventId: string; index: number } | null {
+  const eventsBase = `${adminPath('events')}/`;
+  if (!path.startsWith(eventsBase)) return null;
+
+  const [eventId, section = ''] = path.slice(eventsBase.length).split('/');
+  if (!eventId || eventId === 'new') return null;
+
+  const normalizedSection = section === 'quiz' ? 'quiz' : section;
+  const index = adminEventSectionOrder.indexOf(normalizedSection);
+  if (index === -1) return null;
+
+  return { eventId, index };
+}
+
+function updateRouteTransition(toPath: string, fromPath?: string) {
+  if (!fromPath) {
+    routeTransitionName.value = 'page';
+    return;
+  }
+
+  const toSection = getAdminEventSection(toPath);
+  const fromSection = getAdminEventSection(fromPath);
+
+  if (toSection && fromSection && toSection.eventId === fromSection.eventId && toSection.index !== fromSection.index) {
+    routeTransitionName.value = toSection.index > fromSection.index ? 'page-tab-forward' : 'page-tab-back';
+    return;
+  }
+
+  routeTransitionName.value = 'page';
+}
 
 function isActive(href: string) {
   return activeNavHref.value === href;
@@ -102,15 +216,15 @@ function isActive(href: string) {
 function linkClass(link: NavLink) {
   if (isActive(link.href)) {
     return link.accent
-      ? 'border-dc-yellow/55 text-dc-yellow'
-      : 'text-white after:scale-x-100 after:bg-dc-yellow';
+      ? 'border-dc-ink bg-dc-pink text-white shadow-[2px_2px_0_#111111]'
+      : 'border-dc-ink bg-dc-yellow text-dc-ink shadow-[2px_2px_0_#111111]';
   }
 
   if (link.accent) {
-    return 'border-dc-yellow/20 text-dc-yellow hover:border-dc-yellow/45 hover:text-dc-yellow-glow';
+    return 'border-dc-ink bg-dc-yellow text-dc-ink hover:bg-dc-yellow-glow';
   }
 
-  return 'text-dc-gray-light after:scale-x-0 after:bg-dc-yellow/70 hover:text-white hover:after:scale-x-100';
+  return 'border-transparent text-dc-gray hover:border-dc-border hover:bg-dc-paper-warm hover:text-dc-ink';
 }
 
 async function logout() {
@@ -119,71 +233,36 @@ async function logout() {
 }
 
 async function refreshQuizAvailability() {
-  try {
-    const response = await fetch('/api/quiz/active');
-    if (!response.ok) {
-      quizAvailable.value = false;
-      return;
-    }
-
-    const data = await response.json();
-    quizAvailable.value = Boolean(data.available || data.has_active_quiz);
-  } catch {
-    quizAvailable.value = false;
-  }
+  quizAvailable.value = false;
 }
 
-async function refreshDefaultAdminEvent() {
+async function refreshAdminEventNames() {
   if (!isAdminRoute.value || route.path === adminPath('login')) {
-    defaultAdminEventId.value = null;
-    activeAdminEventIds.value = new Set();
     return;
   }
 
   try {
-    const [eventsResponse, sessionsResponse] = await Promise.all([
-      fetch('/api/events'),
-      fetch('/api/quiz/sessions'),
-    ]);
+    const eventsResponse = await fetch('/api/events');
     if (!eventsResponse.ok) return;
 
     const events = (await eventsResponse.json()) as AdminEventSummary[];
-    const sessions = sessionsResponse.ok ? await sessionsResponse.json() as AdminQuizSessionSummary[] : [];
-    activeAdminEventIds.value = new Set(
-      sessions
-        .filter((session) => session.status === 'waiting' || session.status === 'active')
-        .map((session) => session.event_id),
-    );
-    const sortedEvents = [...events].sort((a, b) => {
-      const priority: Record<string, number> = {
-        live: 0,
-        upcoming: 1,
-        cfp_open: 2,
-        cfp_closed: 3,
-        draft: 4,
-        completed: 5,
-      };
-      const priorityDelta = (priority[a.status] ?? 99) - (priority[b.status] ?? 99);
-      if (priorityDelta !== 0) return priorityDelta;
-      return new Date(b.event_date).getTime() - new Date(a.event_date).getTime();
-    });
-
-    defaultAdminEventId.value = sortedEvents[0]?.id ?? null;
+    adminEventNames.value = Object.fromEntries(events.map((event) => [event.id, event.name]));
   } catch {
-    defaultAdminEventId.value = null;
+    adminEventNames.value = {};
   }
 }
 
 onMounted(() => {
   void refreshQuizAvailability();
-  void refreshDefaultAdminEvent();
+  void refreshAdminEventNames();
   quizAvailabilityInterval = window.setInterval(() => {
     void refreshQuizAvailability();
   }, 15000);
 });
 
-watch(() => route.path, () => {
-  void refreshDefaultAdminEvent();
+watch(() => route.path, (toPath, fromPath) => {
+  updateRouteTransition(toPath, fromPath);
+  void refreshAdminEventNames();
 });
 
 onUnmounted(() => {
@@ -194,55 +273,111 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex h-screen flex-col overflow-hidden bg-dc-dark text-white">
-    <header class="sticky top-0 z-50 border-b border-dc-yellow/10 bg-[#090908]/96 backdrop-blur-md">
+  <div class="flex h-screen flex-col overflow-hidden bg-dc-cream text-dc-ink">
+    <header class="sticky top-0 z-50 border-b-2 border-dc-ink bg-dc-cream/96 backdrop-blur-md">
       <div class="grid w-full grid-cols-[1fr_auto] gap-x-4 gap-y-3 px-4 py-4 sm:px-6 lg:grid-cols-[auto_1fr_auto] lg:items-center lg:gap-8 lg:px-8">
-        <RouterLink to="/" class="group flex min-h-9 items-center font-mono text-xl font-bold tracking-tight sm:text-2xl">
-          <span class="text-white">DEV</span>
-          <span class="mx-1 text-dc-yellow">::</span>
-          <span class="text-white">CON</span>
-          <span class="motion-colors text-dc-gray group-hover:text-dc-yellow">[]</span>
+        <RouterLink to="/" class="group flex min-h-9 items-center">
+          <img
+            :src="logoSrc"
+            alt="DevCongress"
+            class="h-8 w-auto max-w-[13rem] object-contain sm:h-9 sm:max-w-[15rem]"
+          >
         </RouterLink>
 
         <div class="flex items-center justify-end gap-3 lg:order-3">
-          <span class="hidden h-8 w-px rounded-full bg-dc-yellow/20 sm:block" />
+          <span class="hidden h-8 w-px rounded-full bg-dc-ink/30 sm:block" />
           <RouterLink
             :to="modeSwitchLink"
-            class="motion-press rounded-md border border-dc-yellow/20 bg-dc-yellow/[0.035] px-3 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-dc-yellow hover:border-dc-yellow/45 hover:text-dc-yellow-glow"
+            class="motion-press rounded-md border-2 border-dc-ink bg-dc-paper px-3 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-dc-ink shadow-[2px_2px_0_#111111] hover:bg-dc-yellow"
           >
             {{ modeSwitchLabel }}
           </RouterLink>
           <button
             v-if="isAdminRoute && route.path !== adminPath('login')"
-            class="motion-press rounded-md border border-dc-yellow/25 bg-[#11110f] px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider text-dc-gray-light shadow-[inset_0_1px_0_rgba(249,225,94,0.05)] hover:border-dc-yellow/45 hover:text-white"
+            class="motion-press rounded-md border-2 border-dc-ink bg-dc-paper px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider text-dc-ink shadow-[2px_2px_0_#111111] hover:bg-dc-yellow"
             @click="logout"
           >
             Sign Out
           </button>
         </div>
 
-        <nav class="col-span-2 flex min-w-0 items-center gap-4 overflow-x-auto font-mono text-[11px] font-semibold uppercase tracking-wide sm:gap-6 sm:text-xs lg:order-2 lg:col-span-1">
+        <nav class="col-span-2 flex min-w-0 items-center gap-2 overflow-x-auto font-mono text-[11px] font-semibold uppercase tracking-wide sm:gap-3 sm:text-xs lg:order-2 lg:col-span-1">
           <template v-for="(group, groupIndex) in navGroups" :key="groupIndex">
             <RouterLink
               v-for="link in group"
               :key="link.href"
               :to="link.href"
-              class="motion-colors relative shrink-0 py-1.5 after:absolute after:-bottom-1 after:left-0 after:h-px after:w-full after:origin-left after:transition-transform after:duration-150 after:ease-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dc-yellow/35"
-              :class="[link.accent ? 'rounded-md border px-2.5 after:hidden sm:px-3' : '', linkClass(link)]"
+              class="app-nav-link motion-press relative shrink-0 overflow-hidden rounded-md border-2 px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dc-pink/35"
+              :class="[link.accent ? 'sm:px-3' : '', linkClass(link)]"
+              :aria-current="isActive(link.href) ? 'page' : undefined"
             >
-              {{ link.label }}
+              <span class="relative z-10">{{ link.label }}</span>
             </RouterLink>
           </template>
         </nav>
       </div>
     </header>
 
-    <main class="flex-1 overflow-y-auto overflow-x-hidden">
-      <RouterView v-slot="{ Component, route }">
-        <Transition name="page" mode="out-in">
-          <component :is="Component" :key="route.fullPath" />
-        </Transition>
-      </RouterView>
+    <nav
+      v-if="showBreadcrumbs"
+      class="border-b border-dc-border/70 bg-dc-cream px-4 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] sm:px-6 lg:px-8"
+      aria-label="Breadcrumb"
+    >
+      <ol class="flex min-w-0 items-center gap-2 overflow-x-auto font-mono text-[11px] font-bold uppercase tracking-wide text-dc-gray">
+        <li
+          v-for="(item, index) in breadcrumbItems"
+          :key="`${item.label}-${index}`"
+          class="flex shrink-0 items-center gap-2"
+        >
+          <RouterLink
+            v-if="item.href && index < breadcrumbItems.length - 1"
+            :to="item.href"
+            class="app-breadcrumb-link"
+          >
+            {{ item.label }}
+          </RouterLink>
+          <span
+            v-else
+            class="app-breadcrumb-current"
+            aria-current="page"
+          >
+            {{ item.label }}
+          </span>
+          <span
+            v-if="index < breadcrumbItems.length - 1"
+            class="app-breadcrumb-separator"
+            aria-hidden="true"
+          >
+            ›
+          </span>
+        </li>
+      </ol>
+    </nav>
+
+    <main class="page-transition-host flex-1 overflow-y-auto overflow-x-hidden">
+      <div v-if="showAdminEventTabs && adminEventId" class="bg-dc-cream text-dc-ink">
+        <div class="editorial-wrap event-tabs-wrap pb-0">
+          <RouterLink
+            v-if="adminReturnLink"
+            :to="adminReturnLink.href"
+            class="mb-3 inline-flex items-center rounded-md border-2 border-dc-ink bg-dc-paper px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-wide text-dc-ink shadow-[2px_2px_0_#111111] hover:bg-dc-yellow"
+          >
+            Back to {{ adminReturnLink.label }}
+          </RouterLink>
+          <AdminEventTabs :event-id="adminEventId" />
+        </div>
+      </div>
+
+      <div class="page-route-stack">
+        <RouterView v-slot="{ Component, route }">
+          <Transition :name="routeTransitionName">
+            <component :is="Component" :key="route.fullPath" class="page-view" />
+          </Transition>
+        </RouterView>
+      </div>
     </main>
+
+    <FeedbackBot v-if="!isAdminRoute" />
+    <AppToaster />
   </div>
 </template>
