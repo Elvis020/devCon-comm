@@ -5,6 +5,11 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 
 ---
 
+## 2026-06-15 — CI badge and workflow
+
+- Added a GitHub Actions CI workflow that runs typecheck, tests, and production build on pushes to `main` and pull requests.
+- Split the README badge block into clearer groups and added the real CI workflow badge plus Cloudflare Pages and Worker deployment badges.
+
 ## 2026-06-15 — Cloudflare Worker API deploy path
 
 - Added a Cloudflare Worker entrypoint for the Hono API with Wrangler config and a `pnpm deploy:worker` script.
