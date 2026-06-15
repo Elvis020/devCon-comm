@@ -8,14 +8,22 @@
 | `src/App.vue` | Active app shell and top navigation |
 | `src/admin-routes.ts` | Configurable organizer route base path helpers |
 | `src/router.ts` | Active Vue route table |
+| `src/components/ui/AppToaster.vue` | Globally mounted app-themed Sonner toaster |
+| `src/components/ui/ViewSkeleton.vue` | Shared page-shaped skeleton loader variants for loading states |
+| `src/lib/notify.ts` | Typed notification helper that targets the app toaster |
 | `src/views/DashboardView.vue` | DEV::CON[] landing page backed by current mock data |
 | `src/views/ArchiveView.vue` / `ArchiveEventView.vue` | Public archive and talk detail surfaces |
 | `src/views/CfpView.vue` / `MyTalksView.vue` | Speaker CFP and slide management flows |
+| `src/views/FeedbackView.vue` | Public event feedback form for active or auto-open campaigns |
+| `src/components/FeedbackBot.vue` | Public feedback bot that asks testers for name-selected feedback and submits to Supabase |
 | `src/components/NaviiAvatar.vue` | Local deterministic Navii avatar renderer for leaderboard profiles |
 | `src/views/PlayView.vue` / `PlayCodeView.vue` | Quiz join and live player gameplay |
 | `src/views/NotFoundView.vue` | Branded fallback for unknown Vue routes |
 | `src/views/admin/*` | Active admin event/talk/speaker/quiz management views |
+| `lib/luma-attendance.ts` | Luma guest CSV normalization and organizer attendance metrics |
 | `lib/supabase/browser.ts` / `server.ts` | Typed Supabase clients for browser-safe anon access and server-only service-role access |
+| `lib/supabase/community-events.ts` | Supabase-backed community event repository and public meetup DTO mapper |
+| `lib/supabase/media.ts` | Server-side Supabase Storage upload helper for meetup covers and selected event photos |
 | `supabase/migrations/*` | Supabase SQL migrations, starting with tester feedback tables |
 | `server/app.ts` | Hono app — active API routes plus dev SPA fallback |
 | `server/index.ts` | Bun production server — serves `dist/` and `/api/*` on one port |
@@ -29,7 +37,8 @@
 - **Event + CFP flow**
   - Active Vue pages: `src/views/CfpView.vue`, `src/views/admin/AdminEventsView.vue`, `src/views/admin/AdminEventView.vue`
   - Public CFP page: `app/(public)/cfp/[eventId]/page.tsx`
-  - APIs: `/api/events/[eventId]`, `/api/events/[eventId]/validate-speaker`, `/api/cfp`
+  - APIs: `/api/events/[eventId]`, `/api/events/[eventId]/checklist`, `/api/events/[eventId]/validate-speaker`, `/api/cfp`
+  - Mock DB: `lib/mock-db/event-checklists.ts` stores per-event organizer run sheets and status-changing milestones.
 - **Speaker management**
   - Admin page: `app/(admin)/admin/events/[eventId]/speakers/page.tsx`
   - APIs: `/api/events/[eventId]/speakers` (`GET`/`POST`), `/api/events/[eventId]/speakers/[speakerId]` (`DELETE`)
@@ -41,6 +50,15 @@
   - Builder: `app/(admin)/admin/events/[eventId]/quiz/page.tsx`
   - Live control: `app/(admin)/admin/events/[eventId]/quiz/live/page.tsx`
   - APIs: `/api/quiz/sessions*`, `/api/quiz/questions*`, `/api/quiz/state`, `/api/quiz/answer`, `/api/quiz/active`, `/api/quiz/join`
+- **Event feedback campaigns**
+  - Active Vue pages: `src/views/admin/AdminFeedbackView.vue`, `src/views/FeedbackView.vue`
+  - APIs: `/api/events/[eventId]/feedback-campaign`, `/api/feedback/events/[eventId]`, `/api/feedback/events/[eventId]/submissions`
+  - Mock DB: `lib/mock-db/feedback.ts`
+- **Attendance analysis**
+  - Active Vue pages: `src/views/admin/AdminAttendanceOverviewView.vue`, `src/views/admin/AdminAttendanceView.vue`
+  - APIs: `/api/attendance/monthly`, `/api/events/[eventId]/attendance`, `/api/events/[eventId]/attendance/import`, `DELETE /api/events/[eventId]/attendance`
+  - Mock DB: `lib/mock-db/attendance.ts`
+  - CSV parser and summary metrics: `lib/luma-attendance.ts`
 
 ---
 
@@ -54,6 +72,7 @@
   - `writeData<T>(filename, data)` — serializes writes via a per-filename promise queue (`writeQueues: Map<string, Promise<void>>`)
 - **Non-obvious logic:** The write queue chains promises per file key — concurrent writes to `events` and `sessions` can overlap, but concurrent writes to the same file are serialized. Reads are unguarded (last-write-wins on read-during-write).
 - Each entity module (`events.ts`, `talks.ts`, etc.) exports typed helpers like `getAll*`, `get*ById`, `create*`, `update*`.
+- `event-checklists.ts` creates a default chronological run sheet on first read. For existing events, it infers already-reached milestones from the current event status so completed events start with post-event tasks instead of a blank checklist.
 
 ### Supabase (`lib/supabase/`, `supabase/`)
 
@@ -61,9 +80,16 @@
 - `lib/supabase/server.ts` exports a server/admin client using `VITE_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`; keep the service key server-only.
 - `vite.config.ts` loads `.env.local` and injects it into the Hono dev server so local server routes can read Supabase secrets.
 - `types/supabase.ts` currently types the feedback tables by hand until generated Supabase types are introduced.
-- `supabase/migrations/20260530000000_feedback.sql` creates `feedback_testers` for selectable tester names and `feedback_submissions` for feedback rows.
-- Row-level security allows public reads of active tester names and public inserts of new feedback, but not public reads of submitted feedback.
+- `supabase/migrations/20260530000000_feedback.sql` creates `feedback_testers` for the original testing loop and `feedback_submissions` for route-level and event-level feedback rows.
+- `supabase/migrations/20260613000000_event_feedback_campaigns.sql` adds event feedback campaigns, dynamic questions, structured answers, and event/campaign submission fields.
+- `supabase/migrations/20260615000000_community_events.sql` adds `community_events`, modeled from the current `devcongress.org` Astro meetup collection and seeded with the existing website meetup YAML entries.
+- `supabase/migrations/20260615001000_meetup_media_bucket.sql` adds the public `meetup-media` Supabase Storage bucket for selected image uploads.
+- Row-level security allows public reads of active tester names and public inserts of new feedback, but not public reads of submitted feedback; organizer reads and status updates go through authenticated server routes using the service role.
+- Row-level security allows public reads of `community_events` only when `publish_to_website = true`; trusted organizer writes use the server-side service role.
 - `/api/health/supabase` verifies that server-side Supabase config is present and that the feedback tester table is reachable.
+- `/api/health/supabase/community-events` verifies that the Supabase event-source table is reachable.
+- `/api/health/supabase/storage` verifies that the `meetup-media` bucket is reachable.
+- `/api/events` reads and writes Supabase `community_events` when configured, falling back to JSON events if Supabase is unavailable or the table has not been migrated.
 
 ### Hono Server (`server/`)
 
@@ -73,20 +99,37 @@
 - **Current active APIs:**
   - `/api/health`
   - `/api/health/supabase`
+  - `/api/public/meetups`, `/api/public/meetups/[slug]`, `/api/public/meetups/[slug]/talks`
   - `/api/auth/session`, `/api/auth/admin/login`, `/api/auth/logout`
   - `/api/overview`
-  - `/api/events`
+  - `/api/attendance/monthly`
+  - `/api/feedback/inbox`, `/api/feedback/inbox/[feedbackId]`
+  - `/api/events`, including admin-only checklist and attendance analysis/import/removal routes under `/api/events/[eventId]/checklist*` and `/api/events/[eventId]/attendance*`
   - `/api/talks`
   - `/api/leaderboard`
+- **Public website contract:** `/api/public/meetups*` reads Supabase `community_events` first, then falls back to current `Event` + published `Talk` JSON data. It returns a DevCongress.org-friendly meetup DTO with `slug`, `start`, `end`, `cover`, `location`, `speakers`, `schedule`, `photos`, counts, and app route URLs. These endpoints are read-only, CORS-enabled, and cacheable for short-lived website consumption.
+- **Public website verification:** `pnpm verify:public-api` validates the public meetup response shape against the current `devcongress.org` Astro meetup schema expectations, plus CORS headers, cache headers, detail lookup, and talks lookup against `PUBLIC_API_BASE_URL` before the Astro website is wired to consume it.
+- **Public events page:** `/events` consumes `/api/public/meetups` inside this app so organizers can inspect the same public event stream the website will later consume.
 - **Auth note:** Admin routes and organizer mutations use a same-origin HTTP-only cookie session. Set `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET` outside local development; otherwise the prototype falls back to local defaults.
 
 ### Vue App (`src/`)
 
 - `src/main.ts` mounts Vue, Pinia, and Vue Router.
-- `src/App.vue` provides the active shell/nav and polls `/api/quiz/active` so the public `Play` link appears only while a quiz session is waiting or active.
+- `src/App.vue` provides the active shell/nav, contextual breadcrumbs for public and organizer routes, mounts `AppToaster`, and polls `/api/quiz/active` so the public `Play` link appears only while a quiz session is waiting or active.
+- `src/App.vue` renders `src/components/AdminEventTabs.vue` once for event-scoped organizer routes, keeping sub-section tabs stable while routed event pages change underneath.
+- `src/components/ui/AppToaster.vue` wraps `vue-sonner` with the DevCongress editorial/ops toast theme; app code should call `notify` from `src/lib/notify.ts` instead of importing `toast` directly.
+- `src/components/ui/ViewSkeleton.vue` provides reusable skeleton variants for full-page loading states; prefer it over bare loading text so routed views preserve their header, panel, table, and form structure while data fetches.
+- `src/components/FeedbackBot.vue` mounts globally on public routes only; it captures typed or anonymous route feedback and inserts `feedback_submissions` with `trigger_source = route_feedback`, page path, user agent, and viewport context.
+- `src/views/FeedbackView.vue` renders an event-scoped campaign from `/api/feedback/events/:eventId`; campaigns are open when manually set to `active`, or when draft with auto-open enabled and the event status is `completed`. The default auto-open response window starts at the event date and closes 3 days later unless an explicit campaign close time is set.
+- `src/views/ArchiveEventView.vue` checks `/api/feedback/events/:eventId/status` and shows the community “Give Feedback” CTA only while the form is open.
 - `src/views/DashboardView.vue` renders the community hub: featured event/CFP, live quiz join, recent talks, and top members from `/api/overview`.
 - `src/views/ArchiveView.vue` filters completed events by year, query, topic, and speaker.
 - `src/views/NotFoundView.vue` is mounted by the final Vue Router catch-all route for unknown client paths.
+- `src/views/admin/AdminAttendanceOverviewView.vue` renders the monthly attendance ledger, import coverage, source-quality readout, repeat-attendee count, and venue-planning summary from `/api/attendance/monthly`.
+- `src/views/admin/AdminFeedbackOverviewView.vue` renders the route-level App Feedback Inbox from `/api/feedback/inbox` above the monthly event-feedback report, and lets organizers move route feedback through `new`, `reviewing`, `done`, and `wont_fix`.
+- `src/views/admin/AdminAttendanceView.vue` uploads/replaces a Luma CSV and renders post-event import metrics, source/ticket breakdowns, checked-in guests, and approved no-shows.
+- `src/views/admin/AdminEventView.vue` renders the shared chronological event checklist from `/api/events/:eventId/checklist`; checking status milestones can advance the event state, while the status dropdown remains available for manual correction.
+- `src/views/admin/AdminEventView.vue` also manages event media: organizers can upload selected cover/photo images to Supabase Storage or add website-compatible `{ url, type }` links where `type` is `image` for direct media or `folder` for shared galleries.
 - `src/views/admin/AdminQuizView.vue` generates local QR-code join links for the live lobby.
 - Legacy Next pages/components remain in `app/`, `components/`, and `hooks/` as a reference while routes are ported.
 
@@ -121,6 +164,7 @@
 - Exports `designSystem` object with `colors`, `quizColors`, `fonts`, `styles`, `spacing`, `animations`
 - Helper functions: `getStatusBadge(status)` → `{ className, label }`
 - JS-side mirror of the Tailwind theme in `tailwind.config.ts` — keep both in sync when rebranding
+- Current public theme direction is the `devcongress.org` light palette: cream page background, black ink text/borders, yellow brand fills, and pink primary accent. `@fontsource/inter` supplies the body/UI font; IBM Plex Mono remains the mono/accent font.
 
 ---
 

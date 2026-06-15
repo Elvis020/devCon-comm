@@ -4,12 +4,32 @@
 
 ---
 
-## ADR-009: Name-Selected Feedback Without Supabase Sessions
+## ADR-011: Supabase Community Events As The Website Data Source
+
+**Date:** 2026-06-15
+**Why:** The meetup app needs to own event CRUD and expose a stable endpoint that `devcongress.org` can consume later. Modeling the Supabase `community_events` table after the current Astro meetup collection lets the app seed existing website content, preserve the website schema shape, and prove the E2E path before editing the Astro repo.
+**Tradeoffs:** The app now has a Supabase-backed event source while some related organizer workflows still use JSON-backed prototype stores. This keeps phase-one scope focused on event publishing and public API integration, but speaker/talk enrichment will need a later persistence pass if the website should consume fully dynamic schedules and speaker profiles.
+**Alternatives considered:** Editing the Astro website repo first (rejected until the API is tested locally), moving the whole meetup section into Astro now (premature before persistence is stable), or keeping JSON as the source of truth (not deploy-safe for cross-app consumption).
+**Revisit when:** Supabase becomes the only source of truth for talks, speakers, attendance, and feedback, or when the app moves behind a dedicated subdomain.
+
+---
+
+## ADR-010: Align Public App Surfaces With DevCongress.org Light Theme
+
+**Date:** 2026-06-13
+**Why:** The meetup product is being integrated into `devcongress.org`, so public-facing app surfaces should feel like a direct continuation of the main website rather than a separate dark event-ops tool. Use the `.org` light theme as the visual baseline: warm cream page backgrounds, black ink text, DevCongress yellow, and pink accent moments.
+**Tradeoffs:** This moves away from the current dark operational identity and will require a focused token pass across Tailwind, CSS variables, and JS-side design tokens. Organizer-heavy views can still use density and restrained surfaces, but should inherit the light brand system unless a specific workflow needs a darker control room mode later.
+**Alternatives considered:** Keeping a dark companion theme for the app (cohesive internally, but too separate from the website for Phase 1 integration), or switching the whole app to Astro now (premature before the API/data contract is stable).
+**Revisit when:** The app is hosted as a subdomain or separate product surface; at that point, decide whether organizer/admin views need a distinct dark mode while public meetup pages stay aligned with `devcongress.org`.
+
+---
+
+## ADR-009: Lightweight Route Feedback Without Supabase Sessions
 
 **Date:** 2026-05-30
-**Why:** Testers should be able to submit feedback quickly during app testing without account creation, magic links, or session state. A curated tester-name list is enough context for this feedback loop and avoids blocking early product iteration on auth design.
-**Tradeoffs:** Tester identity is not cryptographically verified, so someone can submit feedback under another tester's display name. This is acceptable for a small trusted testing group, but not for production abuse-resistant reporting.
-**Alternatives considered:** Supabase Auth sessions for testers (too much friction for the current testing loop), anonymous session IDs (unnecessary because the user explicitly wants testers to select their names), external forms (fast but lose app route/browser context).
+**Why:** Testers should be able to submit route-level feedback quickly during app testing without account creation, magic links, or session state. A typed name plus Anonymous option is enough context for this feedback loop and avoids blocking early product iteration on auth design.
+**Tradeoffs:** Tester identity is not cryptographically verified, so someone can submit feedback under any typed display name. This is acceptable for a small trusted testing group, but not for production abuse-resistant reporting.
+**Alternatives considered:** Supabase Auth sessions for testers (too much friction for the current testing loop), a curated tester-name dropdown (too rigid once anonymous feedback is allowed), external forms (fast but lose app route/browser context).
 **Revisit when:** Feedback is opened beyond a trusted tester group, or when the app's broader Supabase Auth model is introduced.
 
 ---

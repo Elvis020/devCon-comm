@@ -15,6 +15,8 @@
 ## Folder Conventions
 
 - `src/` — active Vue app shell, routes, views, stores, and future composables
+- `src/components/ui/` — active Vue shared primitives mounted or reused across views, such as the global Sonner toaster
+- `src/lib/` — browser-side app helpers such as `notify`, alongside legacy-compatible shared modules
 - `server/` — active Hono API and Bun production entrypoint
 - `app/(public)/` — legacy Next public routes kept as migration reference
 - `app/(admin)/admin/` — legacy Next admin routes kept as migration reference
@@ -66,6 +68,21 @@ Use `dc-*` Tailwind classes for all brand colors. For programmatic style generat
 ```ts
 const { className, label } = getStatusBadge(talk.status);
 ```
+
+The next rebrand should align public app surfaces with the `devcongress.org` light theme rather than preserving the dark companion palette:
+
+- Background: `#F5F2E8`
+- Ink/text: `#111111`
+- Brand yellow: `#F5E642`
+- Brand pink: `#E8117F`
+- Subtle border: `#E0DDD4`
+- Mid text: `#555555`
+- Muted text: `#888888`
+
+Keep `tailwind.config.ts`, `src/styles.css`, and `lib/design-system.ts` synchronized when applying the theme.
+
+### Toast Notifications
+Use `notify` from `src/lib/notify.ts` for app notifications so all messages target the globally mounted `AppToaster` and inherit the editorial/ops Sonner theme. Do not import `toast` from `vue-sonner` directly inside views unless a feature needs a deliberate separate toaster.
 
 ---
 

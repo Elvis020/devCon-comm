@@ -5,6 +5,118 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 
 ---
 
+## 2026-06-15 — Browser metadata polish
+
+- Added standard 16px and 32px favicon assets so browser tabs can render the DevCongress icon instead of falling back to the default icon.
+- Updated the static and production HTML titles to `DevCongress | Community`.
+- Added route-aware document titles so organizer-console routes show `DevCongress | Organizers`.
+
+## 2026-06-15 — Archive header polish
+
+- Removed the event, talk, and year count cards from the public archive masthead.
+- Removed the masthead count cards from the public leaderboard and My Talks pages for the same cleaner header treatment.
+- Constrained the leaderboard mode-switch underline to the same width as the leaderboard table.
+- Replaced the separate leaderboard coming-soon banner with a small angled masthead ribbon.
+- Matched the homepage Top Members preview to the same angled coming-soon ribbon treatment.
+- Removed the homepage Players coming-soon summary card and moved the Top Members preview higher.
+- Removed Praise from the route feedback kind picker, replaced tester-name selection with a typed name plus Anonymous checkbox, and improved route-path contrast.
+- Added capped auto-growth, internal textarea overflow, and a character counter to the route feedback textarea so longer notes are easier to write without scrolling the whole feedback panel.
+- Hid the feedback launcher while the feedback panel is open so its bubble cannot overlap the submit button.
+- Added a Supabase-backed App Feedback Inbox to the organizer Feedback Hub, including route-feedback tagging and admin-only status updates.
+
+## 2026-06-15 — Community events UI polish
+
+- Removed the count tiles from the public Events masthead so the page opens with a simpler archive-style header.
+
+## 2026-06-15 — Supabase community events source
+
+- Added a Supabase `community_events` migration modeled from the current `devcongress.org` Astro meetup schema and seeded it with the existing website meetup YAML content.
+- Added a Supabase community-event repository so `/api/events` can read/write Supabase events when configured while preserving JSON fallback during local development.
+- Updated `/api/public/meetups*` to prefer Supabase-published community events before falling back to the local JSON event stream.
+- Updated fallback public meetup mapping so event photo links flow through as website-compatible `photos[]` instead of substituting the cover image.
+- Added `/api/health/supabase/community-events` as a focused readiness check for the new event-source table.
+- Extended organizer event creation with website-facing fields and a publish toggle so new rows can be tested through the public meetup endpoint.
+- Added organizer event media management for direct photo links and shared gallery/folder links.
+- Added Supabase Storage support for organizer-uploaded event covers and selected event photos through a public `meetup-media` bucket.
+- Added browser-side image compression before Supabase Storage uploads, targeting 1600px/WebP/2MB while keeping the server-side 5MB validation cap.
+- Added `/api/health/supabase/storage` for checking the media bucket before testing uploads.
+- Documented the Supabase event-source contract and recorded the decision to make this app the meetup data owner before the Astro website repo consumes it.
+
+## 2026-06-15 — Free-first launch scope
+
+- Marked quiz and leaderboard as phase-one coming-soon features while preserving their route/UI paths for later rollout.
+- Kept the homepage leaderboard preview visible but de-emphasized it with coming-soon treatment.
+- Kept attendance CSV imports active and added a 2MB file-size policy for Luma exports.
+- Reframed speaker slide handling as link-only so the app stores public slide URLs instead of files.
+- Revised the hosting recommendation around the reduced phase-one scope: Cloudflare Pages/Worker plus Supabase as target, Render plus Supabase as a temporary bridge, and Durable Objects reserved for future quiz work.
+
+## 2026-06-14 — Cloudflare/Supabase deployment planning
+
+- Added a deployment runbook for the proposed Cloudflare Pages/Workers, Durable Objects, and Supabase production shape.
+- Documented the current app blockers before Cloudflare deployment: JSON persistence, Bun-specific serving, local filesystem assumptions, and in-request PDF processing.
+- Captured a starter cost posture showing that early testing can begin on free tiers, while public launch should budget for Cloudflare Workers Paid and Supabase Pro.
+- Added a free-first deployment posture for a non-funded community group, including upload caps, delayed quiz realtime, and a Firebase cost/fit comparison.
+
+## 2026-06-14 — Organizer attendance analysis
+
+- Added a reusable `ViewSkeleton` loader system with page-shaped variants for dashboards, tables, cards, forms, ledgers, event overview, quiz builder, and quiz entry states.
+- Replaced full-page `LOADING...` placeholders across active public and organizer Vue views with layout-preserving skeletons that respect reduced-motion preferences.
+- Added contextual breadcrumbs under the app shell navigation for public and organizer routes, including event-level organizer pages, so deep pages have a clear way back without relying only on the top navbar.
+- Added restrained breadcrumb hover, press, and current-route motion that respects reduced-motion preferences.
+- Added directional organizer event subsection transitions and a gliding active tab indicator so Overview, Talks, Speakers, Attendance, Quiz, and Feedback behave like one continuous tabbed workspace.
+- Reworked the organizer event overview into a compact dashboard layout so the overview subsection fits the desktop viewport without requiring page scroll at the target wide layout.
+- Refined the organizer event overview workstream UI into a compact operations list with calmer sans-serif numeric stats.
+- Added a compact event lifecycle key to the organizer event list with plain-language speaker-submission and program-set stages instead of unexplained CFP/upcoming labels.
+- Reworked pagination footers into a shared compact control pattern so page counts read as status text instead of a third button.
+- Added a monthly attendance ledger at `[adminBase]/attendance` with import coverage, month-by-month metrics, best-month readouts, and venue-planning guidance.
+- Added an organizer-only attendance page at `[adminBase]/events/[eventId]/attendance` for post-event Luma attendance readouts.
+- Added a Vue Sonner toast foundation with a globally mounted DevCongress-themed toaster and typed `notify` helper for future view-level usage.
+- Added a single-action CSV import control with real file-read and upload progress states for replacing an event's Luma guest export.
+- Added a remove-file action for clearing a stored Luma attendance import from an event.
+- Added JSON-backed Luma CSV import storage and summary metrics for approved registrations, check-ins, approved no-shows, check-in rate, source breakdowns, and ticket breakdowns.
+- Added admin-only Hono routes for monthly attendance insights plus fetching, importing, and removing per-event Luma attendance data.
+- Kept the top organizer nav focused on global sections, and moved event-specific navigation back into nested event tabs with Attendance and Feedback included.
+- Preserved Attendance Hub and Feedback Hub return context when organizers open event subpages from monthly hub actions, breadcrumbs, tabs, and nested event links.
+- Added Attendance to organizer event overview action rows.
+- Polished the event overview operations area with consistent ops panels, aligned card tops, fixed metric/action columns, and tighter typography hierarchy.
+- Moved app toasts to the bottom-right corner.
+- Fixed event sub-section route changes so the event tab strip stays mounted and routed content transitions in a stacked slot instead of collapsing through a loading placeholder.
+- Reworked the attendance hub ledger around the selected year, month filters, status filters, and paginated full-width rows so monthly CSV actions stay visible.
+- Simplified attendance hub month rows so CSV state, action, and attendance summary read as one compact decision instead of repeated metric cards.
+- Added an organizer event checklist with chronological milestones, shared JSON persistence, progress state, and milestone-driven event status updates.
+- Reframed the event status dropdown as a manual correction control while the checklist becomes the primary coordination surface for monthly event work.
+
+## 2026-06-13 — Event feedback campaigns
+
+- Added event-scoped feedback campaigns with default post-event questions, local JSON persistence, and Supabase migration support.
+- Added organizer feedback management at `[adminBase]/events/[eventId]/feedback` with campaign status, auto-open behavior, question editing, public link copy, and recent response review.
+- Added public community feedback forms at `/feedback/[eventId]` that render campaign questions and submit structured event answers.
+- Added Hono routes for feedback campaign management, public campaign lookup, and event feedback submission.
+- Added feedback to the event overview and organizer event navigation.
+- Time-boxed event feedback so forms auto-open from the event date and close after 3 days by default.
+- Added a community archive CTA that appears only while feedback is open, and kept manual `active` campaigns open for testing regardless of the auto window.
+- Polished the feedback form UI by replacing native selects with the app dropdown and adding trigger-origin dropdown motion plus question-card enter/hover motion.
+- Added restrained info/success design tokens and applied them to secondary status surfaces, archive stats, feedback state chips, and form focus rings.
+- Added lighter operational panel/table primitives and applied them to dense organizer event, talk, speaker, and attendance surfaces.
+- Reworked the organizer quiz builder and live-host screens with stronger control grouping, option labels, stage contrast, and a dedicated finished-session view.
+- Added an organizer Feedback Hub with month-by-month switching, combined monthly response metrics, and event-level form status links.
+
+## 2026-06-13 — DevCongress.org integration notes
+
+- Recorded the decision to align public app surfaces with the `devcongress.org` light theme instead of keeping the dark companion theme.
+- Added the initial website palette notes to the design-token usage guidance.
+- Added read-only `/api/public/meetups*` endpoints for the `.org` website integration contract.
+- Added `pnpm verify:public-api` to validate the read-only meetup API before touching the `devcongress.org` Astro integration.
+- Added `docs/public-meetups-api.md` as the local contract note for future website consumption.
+- Tightened the public meetup DTO against the current `devcongress.org` Astro meetup schema: offset datetimes, `location.url`, full CTA/archive URLs, non-null speaker images, and draft-event exclusion.
+- Added a public `/events` page that lists all website-publishable meetups from `/api/public/meetups`.
+- Aligned the public `/events` page with the `devcongress.org` All Meetups layout: listing header, two-column cards, cover images, status badges, photo counts, date/location meta, and meetup CTAs.
+- Synced organizer pages to the `.org` light theme across event management, event overview, talks, speakers, quiz builder/live host, login, tabs, and shared number steppers.
+- Switched the active design tokens, app shell, feedback UI, and landing page foundation to the `.org` light palette.
+- Updated public dynamic routes so archive detail, CFP, and quiz-code pages use the `.org` light palette instead of legacy dark accents.
+- Added Inter font assets for the light-theme UI pass.
+- Added a shared archive-style community masthead and applied it to Events, Leaderboard, My Talks, and Play while leaving Home distinct.
+
 ## 2026-05-30 — Supabase feedback foundation
 
 - Added Supabase JS client configuration with browser anon and server service-role helpers.
@@ -12,6 +124,7 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 - Added environment placeholders for Supabase URL, anon key, and server-only service role key.
 - Added a Supabase migration for name-selected tester feedback without Supabase sessions or user auth.
 - Added `/api/health/supabase` to verify server-side Supabase connectivity.
+- Added a public feedback bot that loads tester names from Supabase and submits route-aware feedback without tester sessions.
 
 ## 2026-05-30 — Temporary mode switch
 
@@ -22,6 +135,8 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 - Reworked the event overview operations area into a calmer program pulse and compact next-action rail.
 - Reduced the stretched metric-card feel so counts, status, and actions scan together on wide screens.
 - Replaced remaining native Vue dropdowns with the shared app-themed dropdown component across archive filters, event status, and quiz answer selection.
+- Added an app-themed number stepper and replaced native quiz builder number inputs.
+- Softened generated quiz question cards with calmer typography, lighter answer rows, and quieter edit/delete controls.
 - Fixed admin shell nav highlighting so only the deepest matching event section is marked active.
 - Removed redundant event back links from admin event child pages now covered by shell navigation.
 

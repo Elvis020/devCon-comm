@@ -82,6 +82,7 @@ devcongress-comm-idea/
 - `/archive/[eventId]` — published talks for one event
 - `/leaderboard` — public leaderboard and prototype account claim/merge tools
 - `/cfp/[eventId]` — speaker CFP submission
+- `/feedback/[eventId]` — public event feedback form for open feedback campaigns
 - `/my-talks` — speaker lookup and slide URL upload/update
 - `/play` — quiz join form
 - `/play/[code]` — live quiz player flow
@@ -90,23 +91,36 @@ devcongress-comm-idea/
 - `[adminBase]/login` — prototype organizer sign-in
 - `[adminBase]/events` — event management overview
 - `[adminBase]/events/new` — create event form
-- `[adminBase]/events/[eventId]` — event detail and status progression
+- `[adminBase]/attendance` — monthly attendance ledger and cross-month insights
+- `[adminBase]/events/[eventId]` — event detail, shared checklist, and status progression
 - `[adminBase]/events/[eventId]/talks` — talk review/status management
 - `[adminBase]/events/[eventId]/speakers` — speaker allowlist management
+- `[adminBase]/events/[eventId]/attendance` — organizer-only Luma attendance analysis
 - `[adminBase]/events/[eventId]/quiz` — quiz builder
 - `[adminBase]/events/[eventId]/quiz/live` — live quiz host controls
+- `[adminBase]/events/[eventId]/feedback` — feedback campaign builder and response review
 
 ### Active Hono API Routes (`server/app.ts`)
 
 - `/api/health` — single-server runtime smoke check
 - `/api/health/supabase` — Supabase config/table reachability smoke check
 - `/api/overview` — events, talks, and leaderboard summary for the Vue shell
+- `/api/public/meetups*` — read-only DevCongress.org integration contract with CORS and short public cache headers
 - `/api/auth/session`, `/api/auth/admin/login`, `/api/auth/logout` — same-origin prototype admin session
+- `/api/attendance/monthly` — admin-only monthly attendance ledger, import coverage, and cross-month insights
 - `/api/events` — all events, create event
 - `/api/events/[eventId]` — event detail/status update
+- `/api/events/[eventId]/checklist` — admin-only chronological organizer checklist with status-changing milestones
 - `/api/events/[eventId]/talks` — talks for event
+- `/api/events/[eventId]/attendance` — admin-only attendance summary for the latest Luma import
+- `/api/events/[eventId]/attendance/import` — admin-only CSV import endpoint for Luma guest exports
+- `DELETE /api/events/[eventId]/attendance` — admin-only removal of the stored Luma import
 - `/api/events/[eventId]/speakers*` — speaker allowlist CRUD
+- `/api/events/[eventId]/feedback-campaign` — admin feedback campaign setup, public link, and response list
 - `/api/events/[eventId]/validate-speaker` — CFP speaker allowlist validation
+- `/api/feedback/events/[eventId]` — public feedback campaign payload when open
+- `/api/feedback/events/[eventId]/status` — public feedback availability for community CTAs
+- `/api/feedback/events/[eventId]/submissions` — public structured event feedback submission
 - `/api/cfp` — CFP submission
 - `/api/talks` — all talks, optional `eventId` query filter
 - `/api/talks/[talkId]` — admin talk status update or speaker slide URL update
