@@ -5,6 +5,12 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 
 ---
 
+## 2026-06-15 — Open-source documentation foundation
+
+- Added a concise open-source README that explains the product, quick start, documentation map, project status, stack, contribution path, security posture, and license without overcrowding the landing page.
+- Added root contribution, security, code-of-conduct, and MIT license files for public collaboration readiness.
+- Added structured contributor docs under user guides, technical docs, reference docs, and feature docs so community members, organizers, integrators, and maintainers can enter at the right level of detail.
+
 ## 2026-06-15 — Browser metadata polish
 
 - Added standard 16px and 32px favicon assets so browser tabs can render the DevCongress icon instead of falling back to the default icon.

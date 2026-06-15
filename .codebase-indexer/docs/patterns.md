@@ -13,6 +13,9 @@
 - `src/components/ui/` holds shared active Vue primitives; `src/lib/` holds browser-side helpers like `notify`.
 - `server/` contains active Hono/Bun server code.
 - `lib/mock-db/` has one async helper module per entity and should be used instead of raw JSON reads in routes.
+- Root docs (`README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `LICENSE`) are for open-source entry points and project policy.
+- `docs/user-guides/`, `docs/technical/`, `docs/reference/`, and `docs/features/` hold deeper docs so the README stays concise.
+- `docs/features/_TEMPLATE.md` is the starting point for new feature docs; link new feature docs from `docs/features/README.md`.
 - `app/`, `components/`, and `hooks/` are legacy Next/React references; avoid adding new active features there unless intentionally preserving compatibility.
 - `docs/` is the existing human-facing index; `.codebase-indexer/docs/` is the generated indexer cache.
 
@@ -25,6 +28,7 @@
 - Styling: use `dc-*` Tailwind tokens, `src/styles.css` component classes, and keep `tailwind.config.ts` + `lib/design-system.ts` synchronized.
 - Motion: use transform/opacity/color transitions with `--motion-fast`, `--motion-smooth`, `--motion-spring`; respect `prefers-reduced-motion`.
 - Admin links: preserve hub return context via query params like `?from=attendance` or `?from=feedback` where supported.
+- README style: keep the landing page short, badge row honest/static unless real CI exists, and move detailed setup, routes, features, and operational guidance into linked docs.
 
 ## Co-Change Coupling (Git History)
 | File A | File B | Coupling Signal |

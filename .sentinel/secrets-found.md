@@ -2,19 +2,36 @@
 
 Full values are masked. Do not paste raw secrets into chat or issues.
 
-| # | Severity | Location | Key/Type | Pattern | Masked value |
+| # | Severity | Location | Identifier | Evidence Type | Masked Value |
 |---:|---|---|---|---|---|
-| 1 | LOW | docs/public-meetups-api.md:85 | PUBLIC_API_BASE_URL | env-assignment | http...-api |
-| 2 | LOW | docs/deployment-cloudflare-supabase.md:194 | VITE_SUPABASE_URL | env-assignment | ....... |
-| 3 | LOW | docs/deployment-cloudflare-supabase.md:195 | VITE_SUPABASE_ANON_KEY | env-assignment | ....... |
-| 4 | LOW | docs/deployment-cloudflare-supabase.md:196 | SUPABASE_SERVICE_ROLE_KEY | env-assignment | ....... |
-| 5 | LOW | docs/deployment-cloudflare-supabase.md:197 | ADMIN_PASSWORD | env-assignment | ....... |
-| 6 | LOW | docs/deployment-cloudflare-supabase.md:198 | ADMIN_SESSION_SECRET | env-assignment | ....... |
-| 7 | HIGH | git history | commit 134a123 | history-secret-keyword; review changed files | value not printed |
-| 8 | HIGH | git history | commit c9c4544 | history-secret-keyword; review changed files | value not printed |
+| 1 | LOW | project_brief.md:489 | CRON_SECRET | contextual-credential | ....... |
+| 2 | MEDIUM | lib/supabase/server.ts:31 | autoRefreshToken | contextual-credential | ....... |
+| 3 | MEDIUM | src/views/admin/AdminLoginView.vue:8 | password | contextual-credential | ....... |
+| 4 | MEDIUM | src/views/admin/AdminLoginView.vue:19 | password | contextual-credential | JSON...fy({ |
+| 5 | CRITICAL | .env.local:2 | VITE_SUPABASE_URL | contextual-credential | http...e.co |
+| 6 | LOW | .env.local:3 | VITE_SUPABASE_ANON_KEY | contextual-credential | eyJh...moCs |
+| 7 | CRITICAL | .env.local:7 | SUPABASE_SERVICE_ROLE_KEY | contextual-credential | eyJh...yjDw |
+| 8 | LOW | .env.local:13 | ADMIN_PASSWORD | contextual-credential | devc...dmin |
+| 9 | LOW | docs/deployment-cloudflare-supabase.md:438 | VITE_SUPABASE_URL | contextual-credential | ....... |
+| 10 | LOW | docs/deployment-cloudflare-supabase.md:439 | VITE_SUPABASE_ANON_KEY | contextual-credential | ....... |
+| 11 | CRITICAL | docs/deployment-cloudflare-supabase.md:440 | SUPABASE_SERVICE_ROLE_KEY | contextual-credential | ....... |
+| 12 | LOW | docs/deployment-cloudflare-supabase.md:441 | ADMIN_PASSWORD | contextual-credential | ....... |
+| 13 | LOW | docs/deployment-cloudflare-supabase.md:442 | ADMIN_SESSION_SECRET | contextual-credential | ....... |
+| 14 | LOW | lib/supabase/browser.ts:18 | anonKey | contextual-credential | impo..._KEY |
+| 15 | MEDIUM | lib/supabase/browser.ts:26 | autoRefreshToken | contextual-credential | ....... |
+| 16 | HIGH | git history | commit e3c2df9 | history-secret-keyword; review changed files | value not printed |
+| 17 | HIGH | git history | commit 8e4b19e | history-secret-keyword; review changed files | value not printed |
+| 18 | HIGH | git history | commit 139d7b9 | history-secret-keyword; review changed files | value not printed |
+| 19 | HIGH | git history | commit 134a123 | history-secret-keyword; review changed files | value not printed |
+| 20 | HIGH | git history | commit be884bc | history-secret-keyword; review changed files | value not printed |
+| 21 | HIGH | git history | commit 1d27b49 | history-secret-keyword; review changed files | value not printed |
+| 22 | HIGH | git history | commit 97fc30d | history-secret-keyword; review changed files | value not printed |
+| 23 | HIGH | git history | commit 74e19bd | history-secret-keyword; review changed files | value not printed |
+| 24 | HIGH | git history | commit c9c4544 | history-secret-keyword; review changed files | value not printed |
 
-## Interpretation
-- CRITICAL means likely secret in a tracked file or deploy config.
-- HIGH means likely-active credential artifact or history exposure.
-- MEDIUM means credential-like string requiring manual review.
-- LOW means placeholder/public-config-like hit.
+## Severity Meaning
+
+- CRITICAL means likely active secret in a tracked file or deploy config.
+- HIGH means secret-like material or credential keywords appeared in git history.
+- MEDIUM means unverified credential-like text that needs manual review.
+- LOW means placeholder-like or documentation-only hits.

@@ -15,7 +15,10 @@ devcongress-comm-idea/
 ├── app/                  # Legacy Next.js routes kept as migration reference
 ├── components/           # Legacy React components kept as migration reference
 ├── hooks/                # Legacy React hooks kept as migration reference
-├── docs/                 # Existing human-readable project docs
+├── docs/                 # Human-readable docs: user guides, technical, reference, features, changelog
+├── README.md             # Open-source landing page and documentation map
+├── CONTRIBUTING.md       # Contributor workflow, code style, testing, and docs expectations
+├── SECURITY.md           # Vulnerability reporting and secrets policy
 └── scripts/              # Verification utilities
 ```
 
@@ -30,6 +33,7 @@ devcongress-comm-idea/
 | `lib/design-system.ts` | JS-side mirror of Tailwind/brand tokens. |
 | `types/index.ts` | Event, talk, quiz, feedback, attendance, public meetup, and user types. |
 | `supabase/migrations` | SQL schemas for tester feedback and event feedback campaigns. |
+| `docs` + root community files | Open-source contributor onboarding, user guides, technical docs, reference docs, feature docs, security policy, and code of conduct. |
 | `app`, `components`, `hooks` | Legacy Next/React implementation retained as migration reference. |
 
 ## Execution Entry Map
@@ -59,6 +63,7 @@ Quiz state is server-authoritative but polling-based: players poll `/api/quiz/st
 |---|---|---|
 | Database schema | `supabase/migrations/20260530000000_feedback.sql`, `supabase/migrations/20260613000000_event_feedback_campaigns.sql` | Defines tester feedback and event feedback campaign/submission tables for migration beyond JSON files. |
 | API contract | `docs/public-meetups-api.md`, `scripts/verify-public-meetups-api.ts` | Documents/verifies the read-only DevCongress.org meetup integration DTO. |
+| Open-source docs | `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `LICENSE`, `docs/README.md` | Keeps the public README concise while routing contributors, organizers, integrators, and maintainers into deeper docs. |
 | Runtime topology | `server/index.ts`, `vite.config.ts` | Confirms one-origin Hono API + SPA serving in dev and production; no Docker Compose found in scan. |
 | Docker Compose | — not found in scan | Runtime currently local Vite/Bun without checked-in compose topology. |
 | OpenAPI | — not found in scan | API routes are source-defined in `server/app.ts`; no OpenAPI spec exists. |

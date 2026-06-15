@@ -10,6 +10,8 @@
 | `server/index.ts` | Bun production server for `/api/*` and `dist/` files. |
 | `vite.config.ts` | Vite + Vue + Hono dev-server configuration; loads `.env.local`. |
 | `data/seed.ts` | Mock DB seeding script. |
+| `README.md` | Public open-source entry point with concise overview, badges, quick start, docs map, status, stack, and contribution/security links. |
+| `docs/README.md` | Documentation map for contributors, organizers, integrators, and maintainers. |
 
 ## Per-Module Breakdown
 
@@ -54,6 +56,12 @@
 - **Entry points:** `lib/supabase/browser.ts`, `lib/supabase/server.ts`, `types/supabase.ts`, `supabase/migrations/*`
 - **Key behavior:** Tester feedback currently uses Supabase; event feedback schema exists for future structured persistence.
 - **Non-obvious logic:** Tester feedback avoids Supabase Auth and uses selected tester names for a trusted testing loop.
+
+### Open-Source Documentation
+- **Entry points:** `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `LICENSE`, `docs/README.md`
+- **Key docs:** `docs/user-guides/community-guide.md`, `docs/user-guides/organizer-guide.md`, `docs/technical/local-development.md`, `docs/reference/environment-variables.md`, `docs/reference/routes.md`, `docs/features/*`
+- **Key behavior:** README stays short and routes readers into focused docs; feature docs use `docs/features/_TEMPLATE.md` and are indexed from `docs/features/README.md`.
+- **Non-obvious logic:** CI status badges are intentionally omitted until a real GitHub Actions workflow and remote exist; current badges are static stack/license/status badges only.
 
 ## Configuration
 | Variable / Property | Default | Purpose |

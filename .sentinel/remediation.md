@@ -1,16 +1,18 @@
 # Remediation
 
 ## Immediate Actions
+
 - Rotate any CRITICAL/HIGH secrets that are real credentials.
-- Remove real secrets from tracked files and replace with environment placeholders.
+- Remove real secrets from tracked files and replace them with environment placeholders.
 - If a real secret appears in git history, assume it is exposed and rotate it even if later removed.
 
-## Project-Specific Guidance
-- Keep real values in local untracked env files only; checked-in env examples should contain placeholders.
-- Supabase service role keys must remain server-only and never be exposed to browser code.
-- Browser-safe values such as VITE_SUPABASE_URL and anon keys are lower risk, but should still be checked for environment correctness.
-- Consider adding .env.local and .sentinel/ to .gitignore if the team wants local-only secret/report artifacts.
+## Project-Specific Follow-Up
 
-## Follow-Up Commands
-- Re-run Sentinel after remediation.
-- If any real credential was committed, rotate at the provider and consider history cleanup only after rotation.
+- Review Supabase service-role usage and keep `SUPABASE_SERVICE_ROLE_KEY` server-only.
+- Keep `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET` in deployment secrets, not committed config.
+- Treat documentation values as placeholders only; do not paste production credentials into docs.
+
+## Hygiene
+
+- Consider adding local-only scan outputs to `.gitignore` if the team does not want security reports committed.
+- Re-run this scan before deployment changes or after adding new integrations.

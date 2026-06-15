@@ -1,0 +1,50 @@
+# Routes
+
+This is a contributor-facing route map. The active app is the Vue route surface in `src/router.ts` plus Hono routes in `server/app.ts`.
+
+## Public Routes
+
+| Route | Purpose |
+|---|---|
+| `/` | Community landing page |
+| `/events` | Published meetup listing |
+| `/archive` | Past event archive |
+| `/archive/:eventId` | Event archive detail and talks |
+| `/cfp/:eventId` | Public talk submission form |
+| `/feedback/:eventId` | Public post-event feedback form |
+| `/leaderboard` | Community leaderboard preview |
+| `/my-talks` | Speaker talk lookup and slide links |
+| `/play` | Live quiz waiting/empty state |
+| `/play/:code` | Quiz join flow for a host-opened session |
+| `/:pathMatch(.*)*` | Branded 404 recovery page |
+
+## Organizer Routes
+
+The organizer base path defaults to `/organizer-console` and can be changed with `VITE_ADMIN_BASE_PATH`.
+
+| Route | Purpose |
+|---|---|
+| `/organizer-console/login` | Prototype organizer login |
+| `/organizer-console/events` | Organizer event list |
+| `/organizer-console/events/:eventId` | Event overview and checklist |
+| `/organizer-console/events/:eventId/talks` | Talk review pipeline |
+| `/organizer-console/events/:eventId/speakers` | Speaker access and follow-up |
+| `/organizer-console/events/:eventId/attendance` | Event attendance readout and CSV import |
+| `/organizer-console/events/:eventId/quiz` | Quiz builder and host controls |
+| `/organizer-console/events/:eventId/feedback` | Event feedback campaign builder |
+| `/organizer-console/attendance` | Monthly attendance ledger |
+| `/organizer-console/feedback` | Feedback hub and app feedback inbox |
+
+## API Routes
+
+| Group | Purpose |
+|---|---|
+| `/api/events*` | Event list, event details, organizer mutations, media metadata |
+| `/api/talks*` | CFP submissions, talk review, speaker slide links |
+| `/api/speakers*` | Speaker access workflows |
+| `/api/attendance*` | Luma CSV import, removal, summaries, monthly ledger |
+| `/api/feedback*` | App feedback, event campaigns, public feedback submission |
+| `/api/quiz*` | Quiz sessions, questions, join/play/host state |
+| `/api/public/meetups*` | Read-only website integration API |
+| `/api/auth/*` | Prototype organizer login/logout/session |
+| `/api/health/*` | Local and Supabase readiness checks |
