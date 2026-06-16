@@ -4,6 +4,7 @@ import { cors } from 'hono/cors';
 import { SIMULATED_DELAY_MS } from '@/lib/constants';
 import { compareSecretAnswer, hashSecretAnswer } from '@/lib/account-claim';
 import { attendanceUploadWindowForEvent } from '@/lib/attendance-upload-window';
+import { evaluateRouteFeedbackRateLimit, recordRouteFeedbackSubmission, routeFeedbackRetryMessage } from '@/lib/feedback-rate-limit';
 import { attendanceMonthForEvent, buildAttendanceInsights, buildAttendanceLedger, buildAttendanceSummary, getAttendanceImports, getLatestAttendanceImport, removeAttendanceImport, replaceAttendanceImportFromCsv } from '@/lib/mock-db/attendance';
 import { getEventChecklist, updateEventChecklistItem } from '@/lib/mock-db/event-checklists';
 import { createEvent as createMockEvent, getAllEvents as getAllMockEvents, getEventById as getMockEventById, updateEvent as updateMockEvent } from '@/lib/mock-db/events';
@@ -683,6 +684,21 @@ app.post('/api/feedback', async (c) => {
     return c.json({ error: 'Feedback message is too long' }, 400);
   }
 
+  const forwardedFor = c.req.header('cf-connecting-ip')
+    ?? c.req.header('x-forwarded-for')?.split(',')[0]?.trim()
+    ?? 'unknown';
+  const userAgent = c.req.header('user-agent') ?? 'unknown';
+  const routeFeedbackClientKey = `${forwardedFor}::${userAgent}`;
+  const rateLimit = evaluateRouteFeedbackRateLimit(routeFeedbackClientKey);
+  if (!rateLimit.allowed) {
+    const retryAfterSeconds = Math.max(1, Math.ceil(rateLimit.retryAfterMs / 1000));
+    c.header('Retry-After', String(retryAfterSeconds));
+    return c.json({
+      error: routeFeedbackRetryMessage(rateLimit),
+      retry_after_seconds: retryAfterSeconds,
+    }, 429);
+  }
+
   const supabase = getSupabaseAdminClient(c);
 
   if (testerId) {
@@ -730,6 +746,7 @@ app.post('/api/feedback', async (c) => {
     return c.json({ error: error.message }, 500);
   }
 
+  recordRouteFeedbackSubmission(routeFeedbackClientKey);
   return c.json({ id: data.id }, 201);
 });
 

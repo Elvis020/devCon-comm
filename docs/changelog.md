@@ -8,6 +8,7 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 ## 2026-06-15 — Mobile route fit and feedback UX
 
 - Kept the floating feedback bot visible after a successful submission with a "Feedback received" thank-you bubble and happy face state, plus browser-side cooldown and daily caps to discourage repeat spam from the same device.
+- Added a server-side route-feedback rate limiter keyed to client network/user-agent context, returning `429` plus retry timing for repeat submissions that bypass the browser cooldown.
 - Added an app-wide mobile keyboard dismiss control for focused inputs, textareas, and selects so iOS users can intentionally blur fields without relying on Safari's form accessory behavior.
 - Refined mobile keyboard dismissal with tap-outside blur behavior and a smaller 44px edge fallback button so the control no longer blocks active form content.
 - Compactly redesigned the mobile archive event detail page, including the detail card, description copy, presentation count, and empty state.
