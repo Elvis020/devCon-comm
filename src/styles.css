@@ -2558,6 +2558,13 @@
       opacity 150ms var(--motion-fast);
   }
 
+  .feedback-bot-bubble--success {
+    max-width: 13.5rem;
+    border-color: #111111;
+    background: #f5e642;
+    color: #111111;
+  }
+
   .feedback-bot-body {
     display: grid;
     width: 2.75rem;
@@ -2591,6 +2598,27 @@
     height: 0.32rem;
     border-radius: 999px;
     background: #111111;
+  }
+
+  .feedback-bot-face--happy {
+    position: relative;
+    padding-bottom: 0.2rem;
+  }
+
+  .feedback-bot-face--happy::after {
+    content: "";
+    position: absolute;
+    bottom: 0.2rem;
+    left: 50%;
+    width: 0.7rem;
+    height: 0.34rem;
+    transform: translateX(-50%);
+    border-bottom: 2px solid #111111;
+    border-radius: 0 0 999px 999px;
+  }
+
+  .feedback-bot-face--happy span {
+    transform: translateY(-0.16rem);
   }
 
   .feedback-bot-icon-button {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AppDropdown from '@/src/components/AppDropdown.vue';
 import type { FeedbackKind } from '@/types/supabase';
@@ -15,6 +15,8 @@ const open = ref(false);
 const visible = ref(false);
 const submitting = ref(false);
 const submitted = ref(false);
+const submissionTimestamps = ref<number[]>([]);
+const feedbackNow = ref(Date.now());
 const error = ref<string | null>(null);
 const FEEDBACK_MAX_LENGTH = 4000;
 const FEEDBACK_TEXTAREA_MAX_HEIGHT = 160;
@@ -22,6 +24,10 @@ const FEEDBACK_SHOW_AFTER_VIEWS = 2;
 const FEEDBACK_SNOOZE_VIEWS = 3;
 const FEEDBACK_SESSION_VIEWS_KEY = 'devcon-feedback-route-views';
 const FEEDBACK_NEXT_VIEW_KEY = 'devcon-feedback-next-view';
+const FEEDBACK_SUBMISSIONS_KEY = 'devcon-feedback-bot-submissions';
+const FEEDBACK_COOLDOWN_MS = 10 * 60 * 1000;
+const FEEDBACK_DAILY_LIMIT = 3;
+const FEEDBACK_DAILY_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 const feedbackTypeOptions: { value: FeedbackKind; label: string }[] = [
   { value: 'confusing', label: 'Confusing' },
@@ -34,9 +40,29 @@ const testerName = computed(() => {
 });
 
 const canSubmit = computed(() => {
-  return testerName.value.length > 0 && message.value.trim().length > 0 && !submitting.value;
+  return testerName.value.length > 0 && message.value.trim().length > 0 && !submitting.value && !feedbackLimitMessage.value;
 });
 const feedbackLengthLabel = computed(() => `${message.value.length}/${FEEDBACK_MAX_LENGTH}`);
+const feedbackLimitMessage = computed(() => {
+  const now = feedbackNow.value;
+  const recent = recentSubmissionTimestamps(now);
+  const latest = recent[0] ?? 0;
+  const cooldownRemaining = latest + FEEDBACK_COOLDOWN_MS - now;
+
+  if (cooldownRemaining > 0) {
+    const minutes = Math.max(1, Math.ceil(cooldownRemaining / 60000));
+    return `Feedback received. You can send another note in about ${minutes} minute${minutes === 1 ? '' : 's'}.`;
+  }
+
+  if (recent.length >= FEEDBACK_DAILY_LIMIT) {
+    return 'Thanks for all the notes. This browser has reached today\'s feedback limit.';
+  }
+
+  return '';
+});
+const botBubbleText = computed(() => submitted.value ? 'Feedback received. We will check it out.' : 'Got feedback?');
+const botAriaLabel = computed(() => submitted.value ? 'Feedback received' : 'Open feedback bot');
+let feedbackLimitTimer: number | undefined;
 
 function toggleOpen() {
   if (isMobileViewport()) {
@@ -49,7 +75,9 @@ function toggleOpen() {
   }
 
   open.value = !open.value;
-  submitted.value = false;
+  if (!feedbackLimitMessage.value) {
+    submitted.value = false;
+  }
   error.value = null;
   if (open.value) {
     void nextTick(syncFeedbackTextareaHeight);
@@ -67,11 +95,40 @@ function readSessionNumber(key: string, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function recentSubmissionTimestamps(now = Date.now()) {
+  return submissionTimestamps.value
+    .filter((timestamp) => Number.isFinite(timestamp) && now - timestamp < FEEDBACK_DAILY_WINDOW_MS)
+    .sort((a, b) => b - a);
+}
+
+function persistSubmissionTimestamps(timestamps: number[]) {
+  submissionTimestamps.value = timestamps;
+  window.localStorage.setItem(FEEDBACK_SUBMISSIONS_KEY, JSON.stringify(timestamps));
+}
+
+function readSubmissionTimestamps() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(FEEDBACK_SUBMISSIONS_KEY) ?? '[]');
+    submissionTimestamps.value = Array.isArray(parsed)
+      ? parsed.filter((value) => typeof value === 'number' && Number.isFinite(value))
+      : [];
+    persistSubmissionTimestamps(recentSubmissionTimestamps());
+  } catch {
+    submissionTimestamps.value = [];
+    window.localStorage.removeItem(FEEDBACK_SUBMISSIONS_KEY);
+  }
+}
+
+function recordSuccessfulSubmission() {
+  persistSubmissionTimestamps([Date.now(), ...recentSubmissionTimestamps()]);
+  feedbackNow.value = Date.now();
+}
+
 function updateBotVisibility() {
   const views = readSessionNumber(FEEDBACK_SESSION_VIEWS_KEY) + 1;
   window.sessionStorage.setItem(FEEDBACK_SESSION_VIEWS_KEY, String(views));
   const nextView = readSessionNumber(FEEDBACK_NEXT_VIEW_KEY, FEEDBACK_SHOW_AFTER_VIEWS);
-  visible.value = views >= nextView;
+  visible.value = submitted.value || views >= nextView;
 }
 
 function snoozeFeedbackBot() {
@@ -97,6 +154,7 @@ function blurFeedbackTextarea() {
 
 async function submitFeedback() {
   if (!canSubmit.value) {
+    error.value = feedbackLimitMessage.value || null;
     return;
   }
 
@@ -126,11 +184,13 @@ async function submitFeedback() {
     }
 
     submitted.value = true;
+    recordSuccessfulSubmission();
     message.value = '';
     feedbackType.value = 'confusing';
     name.value = '';
     submitAnonymously.value = false;
-    snoozeFeedbackBot();
+    open.value = false;
+    visible.value = true;
     void nextTick(syncFeedbackTextareaHeight);
   } catch (caught) {
     error.value = caught instanceof Error ? caught.message : 'Unable to send feedback';
@@ -154,7 +214,19 @@ watch(() => route.fullPath, () => {
   updateBotVisibility();
 });
 
-onMounted(updateBotVisibility);
+onMounted(() => {
+  readSubmissionTimestamps();
+  updateBotVisibility();
+  feedbackLimitTimer = window.setInterval(() => {
+    feedbackNow.value = Date.now();
+  }, 30000);
+});
+
+onUnmounted(() => {
+  if (feedbackLimitTimer !== undefined) {
+    window.clearInterval(feedbackLimitTimer);
+  }
+});
 </script>
 
 <template>
@@ -225,6 +297,9 @@ onMounted(updateBotVisibility);
             <div v-if="error" class="rounded-md border border-red-500/30 bg-red-950/20 p-3 text-sm text-red-100">
               {{ error }}
             </div>
+            <div v-if="feedbackLimitMessage" class="rounded-md border border-dc-yellow/30 bg-dc-yellow/[0.08] p-3 text-sm text-dc-yellow">
+              {{ feedbackLimitMessage }}
+            </div>
             <div v-if="submitted" class="rounded-md border border-dc-yellow/25 bg-dc-yellow/[0.07] p-3 text-sm text-dc-yellow">
               Feedback sent. Thank you.
             </div>
@@ -239,10 +314,10 @@ onMounted(updateBotVisibility);
       </section>
     </Transition>
 
-    <button v-if="!open" class="feedback-bot-runner" type="button" :aria-expanded="open" aria-label="Open feedback bot" @click="toggleOpen">
-      <span class="feedback-bot-bubble">Got feedback?</span>
+    <button v-if="!open" class="feedback-bot-runner" type="button" :aria-expanded="open" :aria-label="botAriaLabel" @click="toggleOpen">
+      <span class="feedback-bot-bubble" :class="{ 'feedback-bot-bubble--success': submitted }">{{ botBubbleText }}</span>
       <span class="feedback-bot-body" aria-hidden="true">
-        <span class="feedback-bot-face">
+        <span class="feedback-bot-face" :class="{ 'feedback-bot-face--happy': submitted }">
           <span />
           <span />
         </span>
