@@ -2,6 +2,8 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AppDropdown from '@/src/components/AppDropdown.vue';
+import TurnstileWidget from '@/src/components/TurnstileWidget.vue';
+import { ROUTE_FEEDBACK_TURNSTILE_ACTION, turnstileEnabled } from '@/src/lib/turnstile';
 import type { FeedbackKind } from '@/types/supabase';
 
 const route = useRoute();
@@ -11,6 +13,7 @@ const submitAnonymously = ref(false);
 const feedbackType = ref<FeedbackKind>('confusing');
 const message = ref('');
 const feedbackTextarea = ref<HTMLTextAreaElement | null>(null);
+const turnstileWidget = ref<InstanceType<typeof TurnstileWidget> | null>(null);
 const open = ref(false);
 const visible = ref(false);
 const submitting = ref(false);
@@ -18,6 +21,8 @@ const submitted = ref(false);
 const submissionTimestamps = ref<number[]>([]);
 const feedbackNow = ref(Date.now());
 const error = ref<string | null>(null);
+const turnstileToken = ref('');
+const turnstileError = ref<string | null>(null);
 const FEEDBACK_MAX_LENGTH = 4000;
 const FEEDBACK_TEXTAREA_MAX_HEIGHT = 160;
 const FEEDBACK_SHOW_AFTER_VIEWS = 2;
@@ -38,9 +43,14 @@ const feedbackTypeOptions: { value: FeedbackKind; label: string }[] = [
 const testerName = computed(() => {
   return submitAnonymously.value ? 'Anonymous' : name.value.trim();
 });
+const turnstileActive = turnstileEnabled();
 
 const canSubmit = computed(() => {
-  return testerName.value.length > 0 && message.value.trim().length > 0 && !submitting.value && !feedbackLimitMessage.value;
+  return testerName.value.length > 0
+    && message.value.trim().length > 0
+    && !submitting.value
+    && !feedbackLimitMessage.value
+    && (!turnstileActive || turnstileToken.value.length > 0);
 });
 const feedbackLengthLabel = computed(() => `${message.value.length}/${FEEDBACK_MAX_LENGTH}`);
 const feedbackLimitMessage = computed(() => {
@@ -152,9 +162,14 @@ function blurFeedbackTextarea() {
   feedbackTextarea.value?.blur();
 }
 
+function resetTurnstile() {
+  turnstileToken.value = '';
+  turnstileWidget.value?.reset();
+}
+
 async function submitFeedback() {
   if (!canSubmit.value) {
-    error.value = feedbackLimitMessage.value || null;
+    error.value = turnstileError.value || feedbackLimitMessage.value || null;
     return;
   }
 
@@ -173,6 +188,8 @@ async function submitFeedback() {
         type: feedbackType.value,
         message: message.value.trim(),
         page_path: route.fullPath,
+        turnstile_action: turnstileActive ? ROUTE_FEEDBACK_TURNSTILE_ACTION : null,
+        turnstile_token: turnstileActive ? turnstileToken.value : null,
         viewport_width: window.innerWidth,
         viewport_height: window.innerHeight,
       }),
@@ -194,9 +211,12 @@ async function submitFeedback() {
     void nextTick(syncFeedbackTextareaHeight);
   } catch (caught) {
     error.value = caught instanceof Error ? caught.message : 'Unable to send feedback';
+  } finally {
+    if (turnstileActive) {
+      resetTurnstile();
+    }
+    submitting.value = false;
   }
-
-  submitting.value = false;
 }
 
 watch(submitAnonymously, (isAnonymous) => {
@@ -290,12 +310,24 @@ onUnmounted(() => {
               </span>
             </label>
 
+            <TurnstileWidget
+              v-if="turnstileActive"
+              ref="turnstileWidget"
+              :action="ROUTE_FEEDBACK_TURNSTILE_ACTION"
+              :disabled="submitting"
+              @error="turnstileError = $event"
+              @token-change="turnstileToken = $event"
+            />
+
             <p class="font-mono text-[11px] uppercase tracking-wide text-dc-gray">
               Page: <span class="feedback-bot-route break-all">{{ route.fullPath }}</span>
             </p>
 
             <div v-if="error" class="rounded-md border border-red-500/30 bg-red-950/20 p-3 text-sm text-red-100">
               {{ error }}
+            </div>
+            <div v-else-if="turnstileError" class="rounded-md border border-red-500/30 bg-red-950/20 p-3 text-sm text-red-100">
+              {{ turnstileError }}
             </div>
             <div v-if="feedbackLimitMessage" class="rounded-md border border-dc-yellow/30 bg-dc-yellow/[0.08] p-3 text-sm text-dc-yellow">
               {{ feedbackLimitMessage }}

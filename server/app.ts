@@ -5,6 +5,7 @@ import { SIMULATED_DELAY_MS } from '@/lib/constants';
 import { compareSecretAnswer, hashSecretAnswer } from '@/lib/account-claim';
 import { attendanceUploadWindowForEvent } from '@/lib/attendance-upload-window';
 import { evaluateRouteFeedbackRateLimit, recordRouteFeedbackSubmission, routeFeedbackRetryMessage } from '@/lib/feedback-rate-limit';
+import { ROUTE_FEEDBACK_TURNSTILE_ACTION, validateTurnstileToken } from '@/lib/turnstile';
 import { attendanceMonthForEvent, buildAttendanceInsights, buildAttendanceLedger, buildAttendanceSummary, getAttendanceImports, getLatestAttendanceImport, removeAttendanceImport, replaceAttendanceImportFromCsv } from '@/lib/mock-db/attendance';
 import { getEventChecklist, updateEventChecklistItem } from '@/lib/mock-db/event-checklists';
 import { createEvent as createMockEvent, getAllEvents as getAllMockEvents, getEventById as getMockEventById, updateEvent as updateMockEvent } from '@/lib/mock-db/events';
@@ -669,6 +670,8 @@ app.post('/api/feedback', async (c) => {
   const body = await c.req.json();
   const type = String(body.type ?? '') as FeedbackKind;
   const message = String(body.message ?? '').trim();
+  const turnstileAction = String(body.turnstile_action ?? '').trim();
+  const turnstileToken = String(body.turnstile_token ?? '').trim();
   let testerId = typeof body.tester_id === 'string' && body.tester_id ? body.tester_id : null;
   let testerName = String(body.tester_name ?? '').trim();
 
@@ -688,6 +691,27 @@ app.post('/api/feedback', async (c) => {
     ?? c.req.header('x-forwarded-for')?.split(',')[0]?.trim()
     ?? 'unknown';
   const userAgent = c.req.header('user-agent') ?? 'unknown';
+  const turnstileSecretKey = envValue('TURNSTILE_SECRET_KEY', c);
+  const turnstileHostname = envValue('TURNSTILE_EXPECTED_HOSTNAME', c);
+  if (turnstileSecretKey) {
+    const turnstileCheck = await validateTurnstileToken({
+      token: turnstileToken,
+      secretKey: turnstileSecretKey,
+      remoteIp: forwardedFor !== 'unknown' ? forwardedFor : undefined,
+      expectedAction: ROUTE_FEEDBACK_TURNSTILE_ACTION,
+      expectedHostname: turnstileHostname,
+    });
+
+    if (!turnstileCheck.ok) {
+      return c.json({ error: turnstileCheck.error }, turnstileCheck.status);
+    }
+
+    if (turnstileAction && turnstileAction !== ROUTE_FEEDBACK_TURNSTILE_ACTION) {
+      return c.json({ error: 'Human verification did not match this form. Please try again.' }, 400);
+    }
+  } else if (turnstileToken || turnstileAction) {
+    return c.json({ error: 'Human verification is temporarily unavailable. Please try again later.' }, 503);
+  }
   const routeFeedbackClientKey = `${forwardedFor}::${userAgent}`;
   const rateLimit = evaluateRouteFeedbackRateLimit(routeFeedbackClientKey);
   if (!rateLimit.allowed) {

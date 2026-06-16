@@ -1,0 +1,94 @@
+const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+
+export const ROUTE_FEEDBACK_TURNSTILE_ACTION = 'route_feedback';
+
+type TurnstileSuccess = {
+  ok: true;
+};
+
+type TurnstileFailure = {
+  ok: false;
+  error: string;
+  status: 400 | 503;
+};
+
+type TurnstileValidationResult = TurnstileSuccess | TurnstileFailure;
+
+type TurnstileValidationInput = {
+  expectedAction?: string;
+  expectedHostname?: string;
+  remoteIp?: string;
+  secretKey?: string;
+  token: string;
+};
+
+type TurnstileSiteverifyResponse = {
+  success?: boolean;
+  action?: string;
+  hostname?: string;
+  'error-codes'?: string[];
+};
+
+export async function validateTurnstileToken({
+  expectedAction,
+  expectedHostname,
+  remoteIp,
+  secretKey,
+  token,
+}: TurnstileValidationInput): Promise<TurnstileValidationResult> {
+  if (!secretKey) {
+    return {
+      ok: false,
+      error: 'Human verification is temporarily unavailable. Please try again later.',
+      status: 503,
+    };
+  }
+
+  if (!token) {
+    return {
+      ok: false,
+      error: 'Please complete the human check and try again.',
+      status: 400,
+    };
+  }
+
+  const formData = new FormData();
+  formData.set('secret', secretKey);
+  formData.set('response', token);
+
+  if (remoteIp) {
+    formData.set('remoteip', remoteIp);
+  }
+
+  const response = await fetch(TURNSTILE_VERIFY_URL, {
+    method: 'POST',
+    body: formData,
+  });
+  const result = await response.json() as TurnstileSiteverifyResponse;
+
+  if (!result.success) {
+    return {
+      ok: false,
+      error: 'Please complete the human check and try again.',
+      status: 400,
+    };
+  }
+
+  if (expectedAction && result.action !== expectedAction) {
+    return {
+      ok: false,
+      error: 'Human verification did not match this form. Please try again.',
+      status: 400,
+    };
+  }
+
+  if (expectedHostname && result.hostname !== expectedHostname) {
+    return {
+      ok: false,
+      error: 'Human verification did not match this site. Please refresh and try again.',
+      status: 400,
+    };
+  }
+
+  return { ok: true };
+}

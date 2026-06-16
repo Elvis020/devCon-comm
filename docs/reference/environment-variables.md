@@ -12,10 +12,13 @@ Use `.env.local` for local development. Do not commit real credentials.
 | `VITE_ADMIN_BASE_PATH` | No | Yes | Organizer route prefix; defaults to `/organizer-console` |
 | `VITE_SHOW_ORGANIZER_LINK` | No | Yes | Public header visibility for the Organizer entry point; set to `false` to hide the button in production |
 | `VITE_SHOW_FEEDBACK_BOT` | No | Yes | Public feedback launcher visibility; set to `false` to hide the route-aware feedback bot |
+| `VITE_TURNSTILE_SITE_KEY` | No | Yes | Optional browser-safe Cloudflare Turnstile sitekey override used to render the route-feedback human check on the floating bot and `/feedback` page |
 | `ADMIN_PASSWORD` | No locally, yes for deployments | No | Prototype organizer login password |
 | `ADMIN_SESSION_SECRET` | No locally, yes for deployments | No | Prototype organizer cookie/session secret |
 | `PUBLIC_APP_URL` | No | No | Absolute base URL used in API payloads when request origin is unavailable |
 | `PUBLIC_FRONTEND_ORIGIN` | Required on Worker when Pages and Worker use different origins | No | Allowed browser origin for credentialed API CORS, for example the Cloudflare Pages URL |
+| `TURNSTILE_SECRET_KEY` | No | No | Server-only Cloudflare Turnstile secret used by `/api/feedback` to validate feedback-form tokens |
+| `TURNSTILE_EXPECTED_HOSTNAME` | No | No | Optional strict hostname check for Turnstile verification, for example `devcon-comm.pages.dev` in production |
 | `ENABLE_PDF_QUIZ_UPLOADS` | No | No | Set to `true` only in runtimes that support the PDF parser. Leave unset on Cloudflare Workers for phase one. |
 
 ## Rules
@@ -26,6 +29,7 @@ Use `.env.local` for local development. Do not commit real credentials.
 - If `VITE_FORCE_API_BASE_URL=true`, keep `VITE_API_BASE_URL` pointed at the Worker origin only; do not include a trailing slash.
 - `VITE_SHOW_ORGANIZER_LINK=false` only hides the public navigation button; it does not secure organizer routes.
 - `VITE_SHOW_FEEDBACK_BOT=false` hides only the floating launcher; `/feedback` remains directly reachable.
+- Route-feedback Turnstile can use a baked-in public sitekey, but `TURNSTILE_SECRET_KEY` must stay server-only on the Worker.
 - Set `PUBLIC_FRONTEND_ORIGIN` on the Worker whenever the browser directly calls a different origin with `VITE_FORCE_API_BASE_URL=true`, otherwise credentialed API calls will be blocked by CORS.
 - Rotate any real key that appears in git history, logs, screenshots, or public issues.
 - Keep `.env.local` local and use deployment secret stores for hosted environments.
