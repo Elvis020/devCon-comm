@@ -3,13 +3,14 @@ import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import AppDropdown from '@/src/components/AppDropdown.vue';
 import TurnstileWidget from '@/src/components/TurnstileWidget.vue';
+import { FEEDBACK_TYPE_PLACEHOLDER, feedbackFormSchema, feedbackTypeOptions } from '@/src/lib/feedback-form';
 import { ROUTE_FEEDBACK_TURNSTILE_ACTION, turnstileEnabled } from '@/src/lib/turnstile';
 import type { FeedbackKind } from '@/types/supabase';
 
 const route = useRoute();
 const name = ref('');
 const submitAnonymously = ref(false);
-const feedbackType = ref<FeedbackKind>('confusing');
+const feedbackType = ref<FeedbackKind | typeof FEEDBACK_TYPE_PLACEHOLDER>(FEEDBACK_TYPE_PLACEHOLDER);
 const message = ref('');
 const feedbackTextarea = ref<HTMLTextAreaElement | null>(null);
 const turnstileWidget = ref<InstanceType<typeof TurnstileWidget> | null>(null);
@@ -21,16 +22,26 @@ const turnstileError = ref<string | null>(null);
 const FEEDBACK_MAX_LENGTH = 4000;
 const FEEDBACK_TEXTAREA_MAX_HEIGHT = 240;
 
-const feedbackTypeOptions: { value: FeedbackKind; label: string }[] = [
-  { value: 'confusing', label: 'Confusing' },
-  { value: 'bug', label: 'Bug' },
-  { value: 'suggestion', label: 'Suggestion' },
+const feedbackTypeSelectOptions = [
+  { value: FEEDBACK_TYPE_PLACEHOLDER, label: 'Select feedback type' },
+  ...feedbackTypeOptions,
 ];
 
 const testerName = computed(() => submitAnonymously.value ? 'Anonymous' : name.value.trim());
 const turnstileActive = turnstileEnabled();
-const canSubmit = computed(() => testerName.value.length > 0
-  && message.value.trim().length > 0
+const feedbackFormValidation = computed(() => feedbackFormSchema.safeParse({
+  tester_name: testerName.value,
+  type: feedbackType.value,
+  message: message.value,
+}));
+const validationMessage = computed(() => {
+  if (feedbackFormValidation.value.success) {
+    return '';
+  }
+
+  return feedbackFormValidation.value.error.issues[0]?.message ?? 'Check the feedback form and try again.';
+});
+const canSubmit = computed(() => feedbackFormValidation.value.success
   && !submitting.value
   && (!turnstileActive || turnstileToken.value.length > 0));
 const feedbackLengthLabel = computed(() => `${message.value.length}/${FEEDBACK_MAX_LENGTH}`);
@@ -59,8 +70,10 @@ function resetTurnstile() {
 }
 
 async function submitFeedback() {
-  if (!canSubmit.value) {
-    error.value = turnstileError.value || null;
+  const formValidation = feedbackFormValidation.value;
+
+  if (!canSubmit.value || !formValidation.success) {
+    error.value = turnstileError.value || validationMessage.value || null;
     return;
   }
 
@@ -70,14 +83,15 @@ async function submitFeedback() {
   submitted.value = false;
 
   try {
+    const formData = formValidation.data;
     const response = await fetch('/api/feedback', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         tester_id: null,
-        tester_name: testerName.value,
-        type: feedbackType.value,
-        message: message.value.trim(),
+        tester_name: formData.tester_name,
+        type: formData.type,
+        message: formData.message,
         page_path: pagePath.value,
         turnstile_action: turnstileActive ? ROUTE_FEEDBACK_TURNSTILE_ACTION : null,
         turnstile_token: turnstileActive ? turnstileToken.value : null,
@@ -93,7 +107,7 @@ async function submitFeedback() {
 
     submitted.value = true;
     message.value = '';
-    feedbackType.value = 'confusing';
+    feedbackType.value = FEEDBACK_TYPE_PLACEHOLDER;
     name.value = '';
     submitAnonymously.value = false;
     void nextTick(syncFeedbackTextareaHeight);
@@ -112,7 +126,16 @@ watch(submitAnonymously, (isAnonymous) => {
 });
 
 watch(message, () => {
+  if (error.value === validationMessage.value) {
+    error.value = null;
+  }
   void nextTick(syncFeedbackTextareaHeight);
+});
+
+watch([name, feedbackType], () => {
+  if (error.value === validationMessage.value) {
+    error.value = null;
+  }
 });
 </script>
 
@@ -159,7 +182,7 @@ watch(message, () => {
           <AppDropdown
             v-model="feedbackType"
             label="Kind"
-            :options="feedbackTypeOptions"
+            :options="feedbackTypeSelectOptions"
             :disabled="submitting"
           />
 

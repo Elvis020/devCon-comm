@@ -3160,8 +3160,8 @@
 
     .admin-login-card .editorial-input {
       min-height: 2.8rem;
-      font-size: 0.86rem !important;
-      line-height: 1.2 !important;
+      font-size: 1rem !important;
+      line-height: 1.35 !important;
     }
 
     .admin-login-error {

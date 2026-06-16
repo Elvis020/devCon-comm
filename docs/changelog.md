@@ -5,6 +5,12 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 
 ---
 
+## 2026-06-16 — Feedback form gating and iOS admin input fix
+
+- Disabled route-feedback submission until the form has a name, an explicitly selected feedback type, a sufficiently detailed note, and a resolved Turnstile token.
+- Moved public route-feedback validation into a shared Zod schema so the floating feedback bot and standalone /feedback route enforce the same requirements and reset state consistently.
+- Raised the organizer sign-in password input back to the iOS-safe 16px mobile text size so Safari no longer zooms the admin login form on focus.
+
 ## 2026-06-15 — Mobile route fit and feedback UX
 
 - Kept the floating feedback bot visible after a successful submission with a "Feedback received" thank-you bubble and happy face state, plus browser-side cooldown and daily caps to discourage repeat spam from the same device.
