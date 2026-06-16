@@ -78,7 +78,7 @@ const showSignOut = computed(() => isAdminRoute.value && route.path !== adminPat
 const showHeaderActions = computed(() => showModeSwitch.value || showSignOut.value);
 const showFeedbackBot = computed(() => feedbackBotEnabled && !isAdminRoute.value && !route.path.startsWith('/feedback'));
 const keyboardDismissStyle = computed(() => ({
-  transform: `translate3d(-50%, -${keyboardInset.value}px, 0)`,
+  transform: `translate3d(0, -${keyboardInset.value}px, 0)`,
 }));
 const adminReturnSource = computed(() => {
   const value = route.query.from;
@@ -296,6 +296,17 @@ function dismissMobileKeyboard() {
   keyboardInset.value = 0;
 }
 
+function handleDocumentPointerDown(event: PointerEvent) {
+  if (!isMobileViewport() || !isEditableElement(document.activeElement)) return;
+
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+  if (target.closest('.keyboard-dismiss-control')) return;
+  if (isEditableElement(target) || target.closest('input, textarea, select, [contenteditable="true"]')) return;
+
+  dismissMobileKeyboard();
+}
+
 async function logout() {
   closeMobileMenu();
   await fetch('/api/auth/logout', { method: 'POST' });
@@ -323,6 +334,7 @@ async function refreshAdminEventNames() {
 }
 
 onMounted(() => {
+  document.addEventListener('pointerdown', handleDocumentPointerDown, { capture: true });
   document.addEventListener('focusin', syncKeyboardDismissVisibility);
   document.addEventListener('focusout', syncKeyboardDismissVisibility);
   window.addEventListener('resize', syncKeyboardDismissVisibility);
@@ -345,6 +357,7 @@ watch(() => route.path, (toPath, fromPath) => {
 
 onUnmounted(() => {
   window.clearTimeout(keyboardFocusTimer);
+  document.removeEventListener('pointerdown', handleDocumentPointerDown, { capture: true });
   document.removeEventListener('focusin', syncKeyboardDismissVisibility);
   document.removeEventListener('focusout', syncKeyboardDismissVisibility);
   window.removeEventListener('resize', syncKeyboardDismissVisibility);
@@ -358,7 +371,7 @@ onUnmounted(() => {
 
 <template>
   <div class="app-shell flex flex-col overflow-hidden bg-dc-cream text-dc-ink" :class="{ 'app-shell--community': !isAdminRoute }">
-    <header class="app-header sticky top-0 z-50 border-b-2 border-dc-ink bg-dc-cream/96 backdrop-blur-md">
+    <header class="app-header z-50 border-b-2 border-dc-ink bg-dc-cream/96 backdrop-blur-md">
       <div class="app-header-inner grid w-full grid-cols-[1fr_auto] gap-x-4 gap-y-3 px-4 py-4 sm:px-6 lg:grid-cols-[auto_1fr_auto] lg:items-center lg:gap-8 lg:px-8">
         <RouterLink to="/" class="group flex min-h-11 items-center">
           <img
@@ -552,6 +565,7 @@ onUnmounted(() => {
       :style="keyboardDismissStyle"
       aria-label="Dismiss keyboard"
       @pointerdown.prevent="dismissMobileKeyboard"
+      @click="dismissMobileKeyboard"
     >
       Done
     </button>

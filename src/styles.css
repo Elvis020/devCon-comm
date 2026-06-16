@@ -2645,22 +2645,24 @@
 
   .keyboard-dismiss-control {
     position: fixed;
-    left: 50%;
-    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    right: max(0.75rem, env(safe-area-inset-right));
+    bottom: max(0.65rem, env(safe-area-inset-bottom));
     z-index: 90;
     display: none;
-    width: min(11rem, calc(100vw - 2rem));
+    width: auto;
+    min-width: 4.75rem;
     min-height: 2.75rem;
     align-items: center;
     justify-content: center;
     border: 2px solid #111111;
-    border-radius: 999px;
+    border-radius: 0.75rem;
     background: #f5e642;
+    padding: 0 0.75rem;
     color: #111111;
     font-family: var(--font-mono), monospace;
-    font-size: 0.72rem;
+    font-size: 0.64rem;
     font-weight: 900;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     box-shadow: 2px 2px 0 #111111;
   }
@@ -2797,6 +2799,12 @@
       min-height: calc(100svh - 3.75rem);
       overflow: visible !important;
       -webkit-overflow-scrolling: auto;
+    }
+
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
     }
 
     .app-shell.app-shell--community .page-route-stack,

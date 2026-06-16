@@ -8,6 +8,7 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 ## 2026-06-15 — Mobile route fit and feedback UX
 
 - Added an app-wide mobile keyboard dismiss control for focused inputs, textareas, and selects so iOS users can intentionally blur fields without relying on Safari's form accessory behavior.
+- Refined mobile keyboard dismissal with tap-outside blur behavior and a smaller 44px edge fallback button so the control no longer blocks active form content.
 - Compactly redesigned the mobile archive event detail page, including the detail card, description copy, presentation count, and empty state.
 - Restored the floating public feedback bot now that mobile community pages use document scrolling.
 - Tightened public mobile typography, cards, header controls, and My Talks placement so phone routes feel less oversized and the speaker email form starts in the first viewport.
@@ -23,6 +24,7 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 - Reset the internal app scroll container on route changes so feedback opens at the form instead of inheriting scroll position from a previous long page.
 - Reduced feedback launcher prominence with route-view interval gating and mobile routing to a standalone `/feedback` page instead of an overlay.
 - Added the `/feedback` route to documentation and noted the mobile feedback behavior for community testers.
+- Made the header sticky at the top on mobile viewports only, leaving larger layouts non-sticky.
 
 ## 2026-06-15 — CI badge and workflow
 
