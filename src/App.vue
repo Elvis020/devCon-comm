@@ -23,10 +23,13 @@ const quizAvailable = ref(false);
 const adminEventNames = ref<Record<string, string>>({});
 const routeTransitionName = ref('page');
 const mobileMenuOpen = ref(false);
+const keyboardDismissVisible = ref(false);
+const keyboardInset = ref(0);
 const logoSrc = '/brand/dev-con-logo.png';
 const showOrganizerLink = import.meta.env.VITE_SHOW_ORGANIZER_LINK !== 'false';
 const feedbackBotEnabled = import.meta.env.VITE_SHOW_FEEDBACK_BOT !== 'false';
 let quizAvailabilityInterval: number | undefined;
+let keyboardFocusTimer: number | undefined;
 
 const publicLinks: NavLink[] = [
   { href: '/', label: 'Home' },
@@ -74,6 +77,9 @@ const showModeSwitch = computed(() => isAdminRoute.value || showOrganizerLink);
 const showSignOut = computed(() => isAdminRoute.value && route.path !== adminPath('login'));
 const showHeaderActions = computed(() => showModeSwitch.value || showSignOut.value);
 const showFeedbackBot = computed(() => feedbackBotEnabled && !isAdminRoute.value && !route.path.startsWith('/feedback'));
+const keyboardDismissStyle = computed(() => ({
+  transform: `translate3d(-50%, -${keyboardInset.value}px, 0)`,
+}));
 const adminReturnSource = computed(() => {
   const value = route.query.from;
   if (value === 'attendance' || value === 'feedback') return value;
@@ -254,6 +260,42 @@ function resetMainScroll() {
   window.setTimeout(scrollToTop, 280);
 }
 
+function isMobileViewport() {
+  return window.matchMedia('(max-width: 640px)').matches;
+}
+
+function isEditableElement(element: Element | null): element is HTMLElement {
+  if (!(element instanceof HTMLElement)) return false;
+  if (element.isContentEditable) return true;
+  return element.matches('input:not([type="hidden"]):not([readonly]):not([disabled]), textarea:not([readonly]):not([disabled]), select:not([disabled])');
+}
+
+function updateKeyboardInset() {
+  const visualViewport = window.visualViewport;
+  if (!visualViewport) {
+    keyboardInset.value = 0;
+    return;
+  }
+
+  keyboardInset.value = Math.max(0, Math.round(window.innerHeight - visualViewport.height - visualViewport.offsetTop));
+}
+
+function syncKeyboardDismissVisibility() {
+  window.clearTimeout(keyboardFocusTimer);
+  keyboardFocusTimer = window.setTimeout(() => {
+    keyboardDismissVisible.value = isMobileViewport() && isEditableElement(document.activeElement);
+    updateKeyboardInset();
+  }, 0);
+}
+
+function dismissMobileKeyboard() {
+  if (isEditableElement(document.activeElement)) {
+    document.activeElement.blur();
+  }
+  keyboardDismissVisible.value = false;
+  keyboardInset.value = 0;
+}
+
 async function logout() {
   closeMobileMenu();
   await fetch('/api/auth/logout', { method: 'POST' });
@@ -281,6 +323,11 @@ async function refreshAdminEventNames() {
 }
 
 onMounted(() => {
+  document.addEventListener('focusin', syncKeyboardDismissVisibility);
+  document.addEventListener('focusout', syncKeyboardDismissVisibility);
+  window.addEventListener('resize', syncKeyboardDismissVisibility);
+  window.visualViewport?.addEventListener('resize', updateKeyboardInset);
+  window.visualViewport?.addEventListener('scroll', updateKeyboardInset);
   void refreshQuizAvailability();
   void refreshAdminEventNames();
   quizAvailabilityInterval = window.setInterval(() => {
@@ -290,12 +337,19 @@ onMounted(() => {
 
 watch(() => route.path, (toPath, fromPath) => {
   closeMobileMenu();
+  dismissMobileKeyboard();
   resetMainScroll();
   updateRouteTransition(toPath, fromPath);
   void refreshAdminEventNames();
 });
 
 onUnmounted(() => {
+  window.clearTimeout(keyboardFocusTimer);
+  document.removeEventListener('focusin', syncKeyboardDismissVisibility);
+  document.removeEventListener('focusout', syncKeyboardDismissVisibility);
+  window.removeEventListener('resize', syncKeyboardDismissVisibility);
+  window.visualViewport?.removeEventListener('resize', updateKeyboardInset);
+  window.visualViewport?.removeEventListener('scroll', updateKeyboardInset);
   if (quizAvailabilityInterval !== undefined) {
     window.clearInterval(quizAvailabilityInterval);
   }
@@ -491,6 +545,16 @@ onUnmounted(() => {
     </main>
 
     <FeedbackBot v-if="showFeedbackBot" />
+    <button
+      v-if="keyboardDismissVisible"
+      class="keyboard-dismiss-control motion-press"
+      type="button"
+      :style="keyboardDismissStyle"
+      aria-label="Dismiss keyboard"
+      @pointerdown.prevent="dismissMobileKeyboard"
+    >
+      Done
+    </button>
     <AppToaster />
   </div>
 </template>

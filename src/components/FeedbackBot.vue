@@ -91,11 +91,16 @@ function syncFeedbackTextareaHeight() {
   element.style.overflowY = element.scrollHeight > FEEDBACK_TEXTAREA_MAX_HEIGHT ? 'auto' : 'hidden';
 }
 
+function blurFeedbackTextarea() {
+  feedbackTextarea.value?.blur();
+}
+
 async function submitFeedback() {
   if (!canSubmit.value) {
     return;
   }
 
+  blurFeedbackTextarea();
   submitting.value = true;
   error.value = null;
   submitted.value = false;

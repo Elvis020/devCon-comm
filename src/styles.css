@@ -2643,6 +2643,28 @@
     color: #595959;
   }
 
+  .keyboard-dismiss-control {
+    position: fixed;
+    left: 50%;
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    z-index: 90;
+    display: none;
+    width: min(11rem, calc(100vw - 2rem));
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #111111;
+    border-radius: 999px;
+    background: #f5e642;
+    color: #111111;
+    font-family: var(--font-mono), monospace;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    box-shadow: 2px 2px 0 #111111;
+  }
+
   .feedback-bot-check {
     display: inline-flex;
     min-height: 2.75rem;
@@ -3208,6 +3230,81 @@
       margin-top: 0 !important;
       width: 100%;
       padding: 1rem;
+    }
+
+    .keyboard-dismiss-control {
+      display: flex;
+    }
+
+    .archive-event-wrap {
+      padding-top: 1.25rem !important;
+      padding-bottom: 1rem !important;
+    }
+
+    .archive-event-back {
+      margin-bottom: 1.15rem !important;
+      min-height: 2.75rem;
+      font-size: 0.72rem !important;
+      letter-spacing: 0.08em !important;
+    }
+
+    .archive-event-hero {
+      margin-bottom: 1.55rem !important;
+      padding: 0.9rem !important;
+      border-width: 1px !important;
+      border-radius: 0.45rem !important;
+      box-shadow: 2px 2px 0 #111111 !important;
+    }
+
+    .archive-event-title {
+      max-width: 16.5rem !important;
+      font-size: 1.62rem !important;
+      line-height: 1.05 !important;
+      letter-spacing: 0 !important;
+    }
+
+    .archive-event-date {
+      margin-top: 0.7rem !important;
+      font-size: 0.7rem !important;
+      letter-spacing: 0.08em !important;
+    }
+
+    .archive-event-description {
+      margin-top: 0.85rem !important;
+      font-size: 0.88rem !important;
+      line-height: 1.48 !important;
+    }
+
+    .archive-event-section-header {
+      margin-bottom: 0.85rem !important;
+      align-items: center !important;
+      gap: 0.75rem !important;
+    }
+
+    .archive-event-section-title {
+      font-size: 1.25rem !important;
+      line-height: 1.08 !important;
+      letter-spacing: 0 !important;
+    }
+
+    .archive-event-count {
+      flex-shrink: 0;
+      padding: 0.55rem 0.7rem !important;
+      border-width: 1px !important;
+      font-size: 0.68rem !important;
+      letter-spacing: 0.04em !important;
+      box-shadow: 1px 1px 0 #111111;
+    }
+
+    .archive-event-empty {
+      padding: 1rem !important;
+      border-width: 1px !important;
+      box-shadow: 2px 2px 0 #111111 !important;
+    }
+
+    .archive-event-empty p {
+      font-size: 0.82rem !important;
+      line-height: 1.4 !important;
     }
 
     .not-found-wrap {
