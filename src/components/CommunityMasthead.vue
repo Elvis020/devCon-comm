@@ -29,16 +29,16 @@ function statClass(tone: 'yellow' | 'info' | 'warm' = 'warm') {
     <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
       <div>
         <p class="editorial-eyebrow">{{ eyebrow }}</p>
-        <h1 class="mt-2 text-4xl font-black tracking-tight text-dc-ink sm:text-5xl">{{ title }}</h1>
-        <p class="mt-3 max-w-3xl text-base leading-7 text-dc-gray">
+        <h1 class="community-masthead-title mt-2 text-4xl font-black tracking-tight text-dc-ink sm:text-5xl">{{ title }}</h1>
+        <p class="community-masthead-description mt-3 max-w-3xl text-base leading-7 text-dc-gray">
           {{ description }}
         </p>
       </div>
-      <div v-if="stats?.length" class="grid grid-cols-3 gap-3 sm:min-w-[360px]">
+      <div v-if="stats?.length" class="community-masthead-stats grid grid-cols-3 gap-3 sm:min-w-[360px]">
         <div
           v-for="stat in stats"
           :key="`${stat.label}-${stat.value}`"
-          class="rounded-md border-2 p-3"
+          class="community-masthead-stat rounded-md border-2 p-3"
           :class="statClass(stat.tone)"
         >
           <div class="font-mono text-xl font-bold text-dc-ink">{{ stat.value }}</div>

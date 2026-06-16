@@ -135,7 +135,7 @@ onUnmounted(() => {
 
 <template>
   <div class="editorial-page">
-    <div class="relative overflow-hidden border-b-2 border-dc-ink">
+    <div class="home-hero relative overflow-hidden border-b-2 border-dc-ink">
       <div class="absolute inset-0 bg-dc-cream" />
       <div
         class="absolute inset-0 opacity-100"
@@ -147,7 +147,7 @@ onUnmounted(() => {
         "
       />
 
-      <div class="relative mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1.2fr_0.8fr] lg:px-8 lg:py-20">
+      <div class="home-hero-inner relative mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1.2fr_0.8fr] lg:px-8 lg:py-20">
         <ViewSkeleton v-if="loading" variant="dashboard" class="lg:col-span-2" />
 
         <div v-else-if="error" class="max-w-xl border-2 border-dc-ink bg-dc-paper p-6 font-mono text-dc-pink shadow-[3px_3px_0_#111111]">
@@ -156,20 +156,20 @@ onUnmounted(() => {
 
         <template v-else>
           <section>
-            <div class="mb-6 inline-flex items-center gap-2 border-2 border-dc-ink bg-dc-yellow px-3 py-2 font-mono text-xs uppercase tracking-[0.22em] text-dc-ink shadow-[2px_2px_0_#111111]">
+            <div class="home-hero-kicker mb-6 inline-flex items-center gap-2 border-2 border-dc-ink bg-dc-yellow px-3 py-2 font-mono text-xs uppercase tracking-[0.22em] text-dc-ink shadow-[2px_2px_0_#111111]">
               <span class="size-1.5 bg-dc-pink" />
               Community tech talks
             </div>
 
-            <h1 class="font-mono text-5xl font-black leading-none tracking-tight text-dc-ink sm:text-7xl lg:text-8xl">
+            <h1 class="home-hero-title font-mono text-5xl font-black leading-none tracking-tight text-dc-ink sm:text-7xl lg:text-8xl">
               <span>DEV</span><span class="text-dc-yellow">::</span><span>CON</span><span class="text-dc-gray">[]</span>
             </h1>
 
-            <p class="mt-7 max-w-2xl text-xl font-medium leading-8 text-dc-gray">
+            <p class="home-hero-lede mt-7 max-w-2xl text-xl font-medium leading-8 text-dc-gray">
               A community-run space for talks, event archives, speaker slide links, and monthly meetup operations.
             </p>
 
-            <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+            <div class="home-hero-actions mt-8 flex flex-col gap-3 sm:flex-row">
               <RouterLink
                 :to="cfpOpenEvent ? `/cfp/${cfpOpenEvent.id}` : '/archive'"
                 class="editorial-action"
@@ -222,7 +222,7 @@ onUnmounted(() => {
     </div>
 
     <div v-if="!loading && !error" class="editorial-wrap">
-      <section class="grid gap-4 sm:grid-cols-2">
+      <section class="home-summary-grid grid gap-4 sm:grid-cols-2">
         <article class="editorial-panel p-5">
           <p class="editorial-eyebrow">events</p>
           <p class="font-mono text-4xl font-bold text-dc-ink">{{ completedEvents.length }}</p>
