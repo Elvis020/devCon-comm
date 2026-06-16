@@ -1616,6 +1616,13 @@
       opacity 150ms var(--motion-fast);
   }
 
+  .editorial-action:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+    box-shadow: none;
+    transform: none;
+  }
+
   .editorial-secondary-action {
     @apply inline-flex items-center justify-center rounded-md border-2 border-dc-ink bg-dc-yellow px-5 py-3 font-mono text-sm font-bold uppercase tracking-wide text-dc-ink shadow-[2px_2px_0_#111111] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dc-pink/30;
     transition:
