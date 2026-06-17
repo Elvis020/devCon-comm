@@ -10,7 +10,7 @@ import { ROUTE_FEEDBACK_TURNSTILE_ACTION, validateTurnstileToken } from '@/lib/t
 import { attendanceMonthForEvent, buildAttendanceInsights, buildAttendanceLedger, buildAttendanceSummary, getAttendanceImports, getLatestAttendanceImport, removeAttendanceImport, replaceAttendanceImportFromCsv } from '@/lib/mock-db/attendance';
 import { getEventChecklist, updateEventChecklistItem } from '@/lib/mock-db/event-checklists';
 import { createEvent as createMockEvent, deleteEvent as deleteMockEvent, getAllEvents as getAllMockEvents, getEventById as getMockEventById, updateEvent as updateMockEvent } from '@/lib/mock-db/events';
-import { createDefaultFeedbackCampaign, createEventFeedbackSubmission, getAllFeedbackCampaigns, getAllFeedbackSubmissions, getFeedbackCampaignByEvent, getFeedbackSubmissionsByEvent, getOrCreateFeedbackCampaign, updateFeedbackCampaign } from '@/lib/mock-db/feedback';
+import { createDefaultFeedbackCampaign, createEventFeedbackSubmission, getAllFeedbackCampaigns, getAllFeedbackSubmissions, getFeedbackCampaignByEvent, getFeedbackSubmissionByResponseToken, getFeedbackSubmissionsByEvent, getOrCreateFeedbackCampaign, updateFeedbackCampaign } from '@/lib/mock-db/feedback';
 import { createQuestion, deleteQuestion, getQuestionById, getQuestionsBySession, reorderQuestions, updateQuestion } from '@/lib/mock-db/questions';
 import { readData, writeData } from '@/lib/mock-db';
 import { createQuizParticipant, getQuizParticipantBySessionAndUser, getQuizParticipantsBySession, updateQuizParticipant } from '@/lib/mock-db/quiz-participants';
@@ -52,6 +52,8 @@ const PAPER_QUIZ_MAX_QUESTION_COUNT = 8;
 const PAPER_QUIZ_GENERATION_NOTE = 'Prototype rule-based generation from extracted PDF text. Review and edit every question before going live.';
 const FEEDBACK_AUTO_OPEN_DAYS = 3;
 const FEEDBACK_AUTO_OPEN_MS = FEEDBACK_AUTO_OPEN_DAYS * 24 * 60 * 60 * 1000;
+const EVENT_FEEDBACK_TOKEN_MIN_CHARS = 20;
+const EVENT_FEEDBACK_TOKEN_MAX_CHARS = 160;
 const FEEDBACK_CAMPAIGN_STATUSES = new Set<FeedbackCampaignStatus>(['draft', 'active', 'closed']);
 const FEEDBACK_QUESTION_TYPES = new Set<FeedbackQuestionType>(['rating', 'text', 'choice', 'talk_select', 'yes_no']);
 const ROUTE_FEEDBACK_STATUSES = new Set<FeedbackStatus>(['new', 'reviewing', 'done', 'wont_fix']);
@@ -435,6 +437,48 @@ function isFeedbackCampaignOpen(event: Event, campaign: FeedbackCampaign): boole
     || (campaign.status === 'draft' && campaign.auto_open_on_event_completion && event.status === 'completed');
 
   return statusOpen && afterOpen && beforeClose;
+}
+
+function normalizeEventFeedbackResponseToken(input: unknown): string | null {
+  if (typeof input !== 'string') return null;
+
+  const token = input.trim();
+  if (token.length < EVENT_FEEDBACK_TOKEN_MIN_CHARS || token.length > EVENT_FEEDBACK_TOKEN_MAX_CHARS) {
+    return null;
+  }
+
+  return token;
+}
+
+async function hashEventFeedbackResponseToken(eventId: string, token: string): Promise<string> {
+  const bytes = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(`event-feedback:${eventId}:${token}`),
+  );
+
+  return Array.from(new Uint8Array(bytes))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function hasSupabaseFeedbackResponseToken(
+  c: Context,
+  eventId: string,
+  campaignId: string,
+  responseTokenHash: string,
+): Promise<boolean> {
+  if (!isSupabaseServerConfigured(c)) return false;
+
+  const { data, error } = await getSupabaseAdminClient(c)
+    .from('feedback_submissions')
+    .select('id')
+    .eq('event_id', eventId)
+    .eq('campaign_id', campaignId)
+    .eq('response_token_hash', responseTokenHash)
+    .limit(1);
+
+  if (error) return false;
+  return Boolean(data?.length);
 }
 
 function normalizeFeedbackQuestions(input: unknown): FeedbackQuestion[] {
@@ -1210,6 +1254,22 @@ app.post('/api/feedback/events/:eventId/submissions', async (c) => {
     return c.json({ error: 'Please answer all required questions' }, 400);
   }
 
+  const responseToken = normalizeEventFeedbackResponseToken(body.response_token);
+  if (!responseToken) {
+    return c.json({ error: 'Refresh this feedback form and try again.' }, 400);
+  }
+
+  const responseTokenHash = await hashEventFeedbackResponseToken(eventId, responseToken);
+  const duplicateSubmission = await getFeedbackSubmissionByResponseToken(eventId, responseTokenHash)
+    ?? (await hasSupabaseFeedbackResponseToken(c, eventId, campaign.id, responseTokenHash) ? { id: 'supabase' } : undefined);
+
+  if (duplicateSubmission) {
+    return c.json({
+      error: 'Feedback already received for this event.',
+      code: 'duplicate_feedback',
+    }, 409);
+  }
+
   const submission = await createEventFeedbackSubmission({
     campaign_id: campaign.id,
     event_id: eventId,
@@ -1218,6 +1278,7 @@ app.post('/api/feedback/events/:eventId/submissions', async (c) => {
     answers,
     page_path: typeof body.page_path === 'string' ? body.page_path : null,
     user_agent: c.req.header('user-agent') ?? null,
+    response_token_hash: responseTokenHash,
   });
 
   if (isSupabaseServerConfigured(c)) {
@@ -1230,6 +1291,7 @@ app.post('/api/feedback/events/:eventId/submissions', async (c) => {
       type: 'suggestion',
       message: JSON.stringify(answers),
       structured_answers: answers,
+      response_token_hash: responseTokenHash,
       trigger_source: 'event_feedback_form',
       page_path: submission.page_path,
       user_agent: submission.user_agent,

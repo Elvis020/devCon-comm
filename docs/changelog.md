@@ -10,6 +10,7 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 - Added an organizer event removal flow with a simple reusable confirmation dialog and server-side audit logging for successful deletions.
 - Split public Luma event imports into preview and explicit import steps, so organizers can inspect the scraped event shell before it is added.
 - Differentiated monthly and quarterly events in the organizer event list while showing the real imported event name instead of a generic meetup label.
+- Added a soft anonymous one-response guard for public event feedback forms using per-event browser tokens and server-side token hashes.
 - Documented the new Luma preview route and clarified that event APIs can now remove events as an admin mutation.
 
 ## 2026-06-17 — Meetup CTA polish

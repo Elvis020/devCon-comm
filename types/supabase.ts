@@ -273,6 +273,7 @@ export interface Database {
           type: FeedbackKind;
           message: string;
           structured_answers: unknown[];
+          response_token_hash: string | null;
           trigger_source: string | null;
           page_path: string | null;
           user_agent: string | null;
@@ -294,6 +295,7 @@ export interface Database {
           type: FeedbackKind;
           message: string;
           structured_answers?: unknown[];
+          response_token_hash?: string | null;
           trigger_source?: string | null;
           page_path?: string | null;
           user_agent?: string | null;
@@ -315,6 +317,7 @@ export interface Database {
           type?: FeedbackKind;
           message?: string;
           structured_answers?: unknown[];
+          response_token_hash?: string | null;
           trigger_source?: string | null;
           page_path?: string | null;
           user_agent?: string | null;

@@ -253,6 +253,7 @@ export interface EventFeedbackSubmission {
   answers: FeedbackAnswer[];
   page_path: string | null;
   user_agent: string | null;
+  response_token_hash?: string | null;
   created_at: string;
 }
 

@@ -125,6 +125,17 @@ export async function createEventFeedbackSubmission(
   return submission;
 }
 
+export async function getFeedbackSubmissionByResponseToken(
+  eventId: string,
+  responseTokenHash: string,
+): Promise<EventFeedbackSubmission | undefined> {
+  const submissions = await readData<EventFeedbackSubmission>(SUBMISSIONS_FILE);
+  return submissions.find((submission) => (
+    submission.event_id === eventId
+    && submission.response_token_hash === responseTokenHash
+  ));
+}
+
 export async function getFeedbackSubmissionsByEvent(eventId: string): Promise<EventFeedbackSubmission[]> {
   const submissions = await readData<EventFeedbackSubmission>(SUBMISSIONS_FILE);
   return submissions

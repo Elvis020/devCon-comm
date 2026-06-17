@@ -15,6 +15,7 @@ const route = useRoute();
 const loading = ref(true);
 const submitting = ref(false);
 const submitted = ref(false);
+const duplicateSubmitted = ref(false);
 const error = ref('');
 const event = ref<CommunityEvent | null>(null);
 const campaign = ref<FeedbackCampaign | null>(null);
@@ -29,6 +30,55 @@ const talkOptions = computed(() => [
   { value: '', label: 'Choose a talk' },
   ...talks.value.map((talk) => ({ value: talk.id, label: `${talk.title} · ${talk.speaker_name}` })),
 ]);
+
+function eventIdParam(): string {
+  return String(route.params.eventId ?? '');
+}
+
+function responseTokenStorageKey(): string {
+  return `devcon:event-feedback:${eventIdParam()}:token`;
+}
+
+function submittedStorageKey(): string {
+  return `devcon:event-feedback:${eventIdParam()}:submitted`;
+}
+
+function newResponseToken(): string {
+  if (crypto.randomUUID) return crypto.randomUUID();
+
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function getOrCreateResponseToken(): string {
+  try {
+    const existing = window.localStorage.getItem(responseTokenStorageKey());
+    if (existing) return existing;
+
+    const token = newResponseToken();
+    window.localStorage.setItem(responseTokenStorageKey(), token);
+    return token;
+  } catch {
+    return newResponseToken();
+  }
+}
+
+function markSubmitted() {
+  try {
+    window.localStorage.setItem(submittedStorageKey(), '1');
+  } catch {
+    // Storage can be unavailable in private or locked-down browsers; server-side dedupe still applies.
+  }
+}
+
+function hasSubmittedMarker(): boolean {
+  try {
+    return window.localStorage.getItem(submittedStorageKey()) === '1';
+  } catch {
+    return false;
+  }
+}
 
 function answerValue(questionId: string): string | number {
   const value = answers[questionId];
@@ -55,6 +105,10 @@ async function fetchFeedbackForm() {
     for (const question of data.campaign.questions) {
       answers[question.id] = question.type === 'rating' ? null : '';
     }
+    if (hasSubmittedMarker()) {
+      duplicateSubmitted.value = true;
+      submitted.value = true;
+    }
   } else {
     const payload = await response.json().catch(() => ({}));
     error.value = payload.error ?? 'Feedback is not open for this event, or the 3-day response window has closed.';
@@ -76,6 +130,7 @@ async function submitFeedback() {
       respondent_name: respondent.name,
       respondent_email: respondent.email,
       page_path: route.fullPath,
+      response_token: getOrCreateResponseToken(),
       answers: orderedQuestions.value.map((question) => ({
         question_id: question.id,
         value: answers[question.id] ?? null,
@@ -84,6 +139,12 @@ async function submitFeedback() {
   });
 
   if (response.ok) {
+    duplicateSubmitted.value = false;
+    markSubmitted();
+    submitted.value = true;
+  } else if (response.status === 409) {
+    duplicateSubmitted.value = true;
+    markSubmitted();
     submitted.value = true;
   } else {
     const payload = await response.json().catch(() => ({}));
@@ -108,10 +169,12 @@ onMounted(fetchFeedbackForm);
       <section v-else-if="submitted" class="editorial-panel overflow-hidden">
         <div class="border-b-2 border-dc-ink bg-dc-yellow p-6">
           <p class="editorial-eyebrow mb-2 text-dc-ink">feedback received</p>
-          <h1 class="text-4xl font-black tracking-tight text-dc-ink">Thank you.</h1>
+          <h1 class="text-4xl font-black tracking-tight text-dc-ink">{{ duplicateSubmitted ? 'Already received.' : 'Thank you.' }}</h1>
         </div>
         <div class="p-6">
-          <p class="max-w-2xl text-lg leading-8 text-dc-gray">Your notes help shape the next DevCongress community session. Small comments here save a lot of guessing later.</p>
+          <p class="max-w-2xl text-lg leading-8 text-dc-gray">
+            {{ duplicateSubmitted ? 'This browser has already sent feedback for this event. Thanks for helping us keep the signal clean.' : 'Your notes help shape the next DevCongress community session. Small comments here save a lot of guessing later.' }}
+          </p>
           <RouterLink to="/" class="editorial-secondary-action mt-6">Back Home</RouterLink>
         </div>
       </section>
