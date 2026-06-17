@@ -8,6 +8,7 @@ This is a contributor-facing route map. The active app is the Vue route surface 
 |---|---|
 | `/` | Community landing page |
 | `/events` | Published meetup listing |
+| `/events/:slug` | Meetup detail page with cover, schedule, speakers, photos, and event-level CTA |
 | `/archive` | Past event archive |
 | `/archive/:eventId` | Event archive detail and talks |
 | `/cfp/:eventId` | Public talk submission form |
@@ -27,8 +28,10 @@ The public header's Organizer button can be hidden with `VITE_SHOW_ORGANIZER_LIN
 | Route | Purpose |
 |---|---|
 | `/organizer-console/login` | Organizer sign-in, using Supabase email OTP when configured or local password fallback otherwise |
+| `/organizer-console/auth/callback` | Dedicated Supabase organizer magic-link return route that finishes sign-in before entering the console |
 | `/organizer-console/events` | Organizer event list |
 | `/organizer-console/organizers` | Owner-only organizer email allowlist |
+| `/organizer-console/audit-log` | Owner-only organizer mutation and sign-in audit ledger |
 | `/organizer-console/events/:eventId` | Event overview and checklist |
 | `/organizer-console/events/:eventId/talks` | Talk review pipeline |
 | `/organizer-console/events/:eventId/speakers` | Speaker access and follow-up |
@@ -42,13 +45,15 @@ The public header's Organizer button can be hidden with `VITE_SHOW_ORGANIZER_LIN
 
 | Group | Purpose |
 |---|---|
-| `/api/events*` | Event list, event details, organizer mutations, media metadata |
+| `/api/events*` | Event list, event details, organizer mutations, event removal, media metadata |
 | `/api/talks*` | CFP submissions, talk review, speaker slide links |
 | `/api/speakers*` | Speaker access workflows |
 | `/api/attendance*` | Luma CSV import, removal, summaries, monthly ledger |
 | `/api/feedback*` | App feedback, event campaigns, public feedback submission |
+| `/api/integrations/luma*` | Organizer-only Luma event preview and confirmed import |
 | `/api/quiz*` | Quiz sessions, questions, explicit state advancement, join/play/host state |
 | `/api/public/meetups*` | Read-only website integration API |
 | `/api/auth/*` | Organizer session, Supabase email OTP login, token exchange/callback, and logout |
 | `/api/admin/organizers*` | Owner-only organizer email allowlist management |
+| `/api/admin/audit-log` | Owner-only audit log read API |
 | `/api/health/*` | Local and Supabase readiness checks |

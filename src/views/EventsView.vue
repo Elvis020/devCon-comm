@@ -2,46 +2,8 @@
 import { computed, onMounted, ref } from 'vue';
 import CommunityMasthead from '@/src/components/CommunityMasthead.vue';
 import EventsPageSkeleton from '@/src/components/ui/page-skeletons/EventsPageSkeleton.vue';
-
-type MeetupStatus = 'upcoming' | 'live' | 'past';
-
-interface PublicMeetup {
-  id: string;
-  slug: string;
-  name: string;
-  status: MeetupStatus;
-  start: string;
-  end: string;
-  description: string;
-  cover: string;
-  location: {
-    label?: string;
-    name: string;
-    url: string | null;
-  };
-  registration_url: string | null;
-  stream_url: string | null;
-  cfp_url: string | null;
-  archive_url: string;
-  speakers: {
-    name: string;
-    talk_title: string;
-  }[];
-  schedule: {
-    title: string;
-    type: string;
-  }[];
-  photos: {
-    url: string;
-    type: 'image' | 'folder';
-  }[];
-  talks_count: number;
-  published_talks_count: number;
-}
-
-interface MeetupsResponse {
-  data: PublicMeetup[];
-}
+import { fetchPublicMeetups } from '@/src/lib/api';
+import type { PublicMeetup, PublicMeetupStatus } from '@/types';
 
 const meetups = ref<PublicMeetup[]>([]);
 const loading = ref(true);
@@ -60,41 +22,37 @@ function formatDate(value: string) {
   });
 }
 
-function statusLabel(status: MeetupStatus) {
+function statusLabel(status: PublicMeetupStatus) {
   if (status === 'live') return '● Live';
   if (status === 'upcoming') return 'Upcoming';
   return 'Past';
 }
 
-function statusClass(status: MeetupStatus) {
+function statusClass(status: PublicMeetupStatus) {
   if (status === 'live') return 'bg-dc-pink text-white';
   if (status === 'upcoming') return 'bg-dc-yellow text-dc-ink';
   return 'bg-dc-info-soft text-dc-info';
 }
 
-function primaryHref(meetup: PublicMeetup) {
-  if (meetup.status === 'past') return `/archive/${meetup.id}`;
-  return meetup.registration_url ?? meetup.cfp_url ?? meetup.stream_url ?? `/archive/${meetup.id}`;
-}
+function primaryAction(meetup: PublicMeetup): { href: string; label: string; external: boolean } {
+  if (meetup.status === 'upcoming' && meetup.registration_url) {
+    return { href: meetup.registration_url, label: 'Register', external: true };
+  }
 
-function primaryLabel(meetup: PublicMeetup) {
-  if (meetup.status === 'live') return meetup.stream_url ? 'Follow Live' : 'View Event';
-  if (meetup.status === 'upcoming') return meetup.registration_url || meetup.cfp_url ? 'Register' : 'View Event';
-  return 'View Recap';
-}
+  if (meetup.status === 'live' && meetup.stream_url) {
+    return { href: meetup.stream_url, label: 'Follow live', external: true };
+  }
 
-function isInternalHref(href: string) {
-  return href.startsWith('/');
+  return {
+    href: `/events/${meetup.slug}`,
+    label: meetup.status === 'past' ? 'View recap' : meetup.status === 'upcoming' ? 'Register' : 'View meetup',
+    external: false,
+  };
 }
 
 onMounted(async () => {
   try {
-    const response = await fetch('/api/public/meetups');
-    if (!response.ok) {
-      throw new Error(`Events request failed: ${response.status}`);
-    }
-
-    const payload = await response.json() as MeetupsResponse;
+    const payload = await fetchPublicMeetups();
     meetups.value = payload.data;
   } catch (caught) {
     error.value = caught instanceof Error ? caught.message : 'Unable to load events';
@@ -158,14 +116,15 @@ onMounted(async () => {
 
             <div class="pt-2">
               <component
-                :is="isInternalHref(primaryHref(meetup)) ? 'RouterLink' : 'a'"
-                :to="isInternalHref(primaryHref(meetup)) ? primaryHref(meetup) : undefined"
-                :href="!isInternalHref(primaryHref(meetup)) ? primaryHref(meetup) : undefined"
-                :target="!isInternalHref(primaryHref(meetup)) ? '_blank' : undefined"
-                :rel="!isInternalHref(primaryHref(meetup)) ? 'noopener noreferrer' : undefined"
-                class="editorial-secondary-action inline-flex"
+                :is="primaryAction(meetup).external ? 'a' : 'RouterLink'"
+                :to="!primaryAction(meetup).external ? primaryAction(meetup).href : undefined"
+                :href="primaryAction(meetup).external ? primaryAction(meetup).href : undefined"
+                :target="primaryAction(meetup).external ? '_blank' : undefined"
+                :rel="primaryAction(meetup).external ? 'noopener noreferrer' : undefined"
+                class="editorial-secondary-action group inline-flex items-center gap-2"
               >
-                {{ primaryLabel(meetup) }}
+                <span>{{ primaryAction(meetup).label }}</span>
+                <span aria-hidden="true" class="text-base leading-none transition-transform duration-200 group-hover:translate-x-0.5">→</span>
               </component>
             </div>
           </div>

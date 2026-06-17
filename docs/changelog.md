@@ -5,18 +5,56 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 
 ---
 
+## 2026-06-17 — Event removal and Luma preview
+
+- Added an organizer event removal flow with a simple reusable confirmation dialog and server-side audit logging for successful deletions.
+- Split public Luma event imports into preview and explicit import steps, so organizers can inspect the scraped event shell before it is added.
+- Differentiated monthly and quarterly events in the organizer event list while showing the real imported event name instead of a generic meetup label.
+- Documented the new Luma preview route and clarified that event APIs can now remove events as an admin mutation.
+
+## 2026-06-17 — Meetup CTA polish
+
+- Updated public meetup CTAs so upcoming meetups use `Register`, past meetups use `View recap`, and action buttons now carry a clearer right-arrow affordance.
+- Made the public meetup list CTA destinations match their labels, so registration buttons open the registration URL directly when one exists instead of always routing through the detail page.
+- Reworked the meetup detail hero content treatment with a taller cover, bottom-left layout, outlined status pill, app-consistent typography, and clearer metadata contrast.
+
+## 2026-06-17 — Skeleton motion softening
+
+- Added owner-only audit log review at `/organizer-console/audit-log`, backed by Supabase `admin_audit_log` with request context columns and filters for actor, action, and target type.
+- Extended server-side audit logging across organizer mutations including logout, Luma imports, event/checklist/media changes, feedback management, attendance CSV import/removal, speaker access, talk review/reminders, and quiz builder changes.
+- Reworked shared skeleton loaders to use neutral grayscale surfaces instead of yellow-accented placeholders.
+- Replaced the sweeping shimmer with a softer pulse animation and disabled that pulse for reduced-motion users.
+- Moved the meetup detail loading state onto the shared skeleton system so it matches the rest of the app.
+
 ## 2026-06-16 — Supabase admin auth and organizer allowlist
 
 - Replaced hosted admin sign-in with Supabase email OTP, a token exchange endpoint, and an app-owned HTTP-only admin session cookie, while preserving the shared `ADMIN_PASSWORD` fallback for local development without Supabase auth.
 - Added Supabase `admin_memberships`, `admin_sessions`, and `admin_audit_log` tables for organizer email allowlisting, opaque session validation, and security-sensitive action logs.
 - Added owner-only organizer email management at `/organizer-console/organizers`, including role assignment and disable access actions.
+- Locked the organizer sign-in email field during link-send cooldowns and kept the submitted address visible so valid sign-in attempts cannot be edited mid-countdown.
+- Moved hosted organizer magic-link returns onto a dedicated `/organizer-console/auth/callback` route so sign-in completes before the login form can flash its resend countdown state.
+- Added cover-image file picking to the organizer create-event form, reusing the shared browser compression flow before the uploaded image is written to Supabase Storage.
+- Added shared Zod validation for organizer event creation, disabled the create action until required fields are valid, and marked required fields with red asterisks in the form UI.
+- Split public meetup viewing from the archive by adding a dedicated `/events/:slug` meetup detail route, so event cards now open the website-style meetup context while archive pages stay focused on published talks and slide links.
+- Reworked meetup detail photo sections from a flat grid into the homepage-style stacked print treatment, including rotating front-photo shuffles and a separate gallery action rail.
+- Simplified the organizer access management screen with lighter form chrome, quieter access rows, and plain text role/status treatment.
 - Replaced the organizer role picker native select with the app-native dropdown component so the menu styling stays inside the DevCongress UI system.
 - Replaced the old shared page loader with route-specific skeleton components across public and organizer pages, plus a dedicated feedback inbox section skeleton where that page has nested loading states.
 - Reworked the organizer route-feedback inbox into grouped New, Reviewing, and Resolved sections with quieter shared row styling, compact metadata, expandable long notes, one status dropdown per item, auto-refresh plus focus-refresh behavior with a visible manual refresh control, and a soft-archive `Clear resolved` action that removes closed items from the active inbox without deleting them.
+- Fixed shared dropdown closing so archive Topic and Speaker filters cannot remain open together, and tightened the archive filter menu widths/alignment.
 - Refactored the attendance overview from event rows into true month buckets, so each month appears once, empty months remain visible, and same-month events render inside that month instead of duplicating the month label.
 - Tightened the attendance overview into a narrower monthly ledger with a slimmer vertical stack of visual planning cards for peak month, expected turnout, room-capacity buffer, and CSV coverage.
 - Hardened organizer magic-link requests with generic success responses that no longer reveal allowlist membership, added IP/email rate limiting and resend cooldowns, and deduped login toasts so repeated attempts do not stack noisy errors.
+- Disabled the Organizer Access add-email action until the email field passes Zod email validation, and mirrored the same validation on the admin organizer API.
 - Added DevCongress-branded Supabase confirmation and magic-link email templates with logo, app copy, and production-safe `{{ .ConfirmationURL }}` links.
+- Reworked the organizer create-event schedule fields into a compact two-column row and replaced the native browser date inputs with a shared app-themed calendar picker.
+- Added free-tier Luma event import for organizers: public Luma event URLs can be pasted from the create-event page, imported into Supabase-backed `community_events`, marked with source metadata, and deduplicated by Luma event id without requiring Luma Plus or an API key.
+- Split the organizer create-event screen into an active Luma URL import path and a disabled manual Event Form preview with a coming-soon badge.
+- Compressed the disabled manual Event Form preview so the create-event page fits in a desktop viewport, with the coming-soon ribbon rotated across the top-left corner.
+- Added a compatibility fallback so public Luma URL import still works before the `external_*` metadata migration is applied, using the registration URL to detect existing imports.
+- Aligned meetup schedule type tags into a dedicated column and changed them from pill chips to small-radius labels so rows line up consistently without the capsule look.
+- Moved the meetup detail `All meetups` back link below the hero and simplified the about section CTA to match the selected-event structure on `devcongress.org`.
+- Replaced the feedback campaign inline saved banner with the shared app toast so successful saves do not push the form layout down.
 - Documented the admin auth flow, first-owner bootstrap SQL, local fallback, role model, and deployment security notes in `docs/auth.md`.
 
 ## 2026-06-16 — Feedback form gating and iOS admin input fix

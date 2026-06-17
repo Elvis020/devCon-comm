@@ -219,14 +219,15 @@ watch(years, (availableYears) => {
               v-model="selectedTopic"
               label="Topic"
               :options="topicOptions"
-              menu-class="md:min-w-72"
+              menu-class="md:w-64"
             />
 
             <AppDropdown
               v-model="selectedSpeaker"
               label="Speaker"
               :options="speakerOptions"
-              menu-class="md:min-w-80"
+              menu-align="right"
+              menu-class="md:w-72"
             />
 
             <button

@@ -24,6 +24,7 @@
 | `src/views/NotFoundView.vue` | Branded fallback for unknown Vue routes |
 | `src/views/admin/*` | Active admin event/talk/speaker/quiz management views |
 | `lib/luma-attendance.ts` | Luma guest CSV normalization and organizer attendance metrics |
+| `lib/luma/events.ts` | Server-only Luma calendar event listing and import mapping |
 | `server/quiz-state.ts` | Quiz state read model and explicit phase-advance command helper |
 | `lib/supabase/browser.ts` / `server.ts` | Typed Supabase clients for browser-safe anon access and server-only service-role access |
 | `lib/supabase/community-events.ts` | Supabase-backed community event repository and public meetup DTO mapper |
@@ -41,7 +42,7 @@
 - **Event + CFP flow**
   - Active Vue pages: `src/views/CfpView.vue`, `src/views/admin/AdminEventsView.vue`, `src/views/admin/AdminEventView.vue`
   - Public CFP page: `app/(public)/cfp/[eventId]/page.tsx`
-  - APIs: `/api/events/[eventId]`, `/api/events/[eventId]/checklist`, `/api/events/[eventId]/validate-speaker`, `/api/cfp`
+  - APIs: `/api/events/[eventId]`, `/api/events/[eventId]/checklist`, `/api/events/[eventId]/validate-speaker`, `/api/integrations/luma/import`, `/api/cfp`
   - Mock DB: `lib/mock-db/event-checklists.ts` stores per-event organizer run sheets and status-changing milestones.
 - **Speaker management**
   - Admin page: `app/(admin)/admin/events/[eventId]/speakers/page.tsx`
@@ -93,7 +94,9 @@
 - `/api/health/supabase` verifies that server-side Supabase config is present and that the feedback tester table is reachable.
 - `/api/health/supabase/community-events` verifies that the Supabase event-source table is reachable.
 - `/api/health/supabase/storage` verifies that the `meetup-media` bucket is reachable.
-- `/api/events` reads and writes Supabase `community_events` when configured, falling back to JSON events if Supabase is unavailable or the table has not been migrated.
+- `/api/events` reads, writes, and removes Supabase `community_events` when configured, falling back to JSON events if Supabase is unavailable or the table has not been migrated.
+- `/api/integrations/luma/preview` is the organizer-only read-only Luma step. It returns the event shell and duplicate-import state without creating a `community_events` row.
+- `/api/integrations/luma/import` imports from a public Luma event URL only after organizer confirmation, requires Supabase-backed `community_events`, and stores source metadata to prevent duplicate imports when the Luma metadata migration is present. Before that migration is applied, import falls back to registration-URL dedupe and saves the event without `external_*` metadata.
 
 ### Hono Server (`server/`)
 
@@ -105,17 +108,18 @@
   - `/api/health/supabase`
   - `/api/public/meetups`, `/api/public/meetups/[slug]`, `/api/public/meetups/[slug]/talks`
   - `/api/auth/session`, `/api/auth/admin/login`, `/api/auth/admin/exchange`, `/api/auth/admin/callback`, `/api/auth/logout`
-  - `/api/admin/organizers`
+  - `/api/admin/organizers`, `/api/admin/audit-log`
   - `/api/overview`
   - `/api/attendance/monthly`
   - `/api/feedback/inbox`, `/api/feedback/inbox/[feedbackId]`
   - `/api/events`, including admin-only checklist and attendance analysis/import/removal routes under `/api/events/[eventId]/checklist*` and `/api/events/[eventId]/attendance*`
+  - `/api/integrations/luma/import`
   - `/api/talks`
   - `/api/leaderboard`
 - **Public website contract:** `/api/public/meetups*` reads Supabase `community_events` first, then falls back to current `Event` + published `Talk` JSON data. It returns a DevCongress.org-friendly meetup DTO with `slug`, `start`, `end`, `cover`, `location`, `speakers`, `schedule`, `photos`, counts, and app route URLs. These endpoints are read-only, CORS-enabled, and cacheable for short-lived website consumption.
 - **Public website verification:** `pnpm verify:public-api` validates the public meetup response shape against the current `devcongress.org` Astro meetup schema expectations, plus CORS headers, cache headers, detail lookup, and talks lookup against `PUBLIC_API_BASE_URL` before the Astro website is wired to consume it.
 - **Public events page:** `/events` consumes `/api/public/meetups` inside this app so organizers can inspect the same public event stream the website will later consume.
-- **Auth note:** Hosted admin routes use Supabase email OTP plus app-owned HTTP-only sessions stored in `admin_sessions`; owner-only organizer email management lives at `/organizer-console/organizers`. Local development falls back to `ADMIN_PASSWORD` only when Supabase admin auth is not configured.
+- **Auth note:** Hosted admin routes use Supabase email OTP plus app-owned HTTP-only sessions stored in `admin_sessions`; owner-only organizer email management lives at `/organizer-console/organizers`, and owner-only audit review lives at `/organizer-console/audit-log`. Local development falls back to `ADMIN_PASSWORD` only when Supabase admin auth is not configured.
 
 ### Vue App (`src/`)
 
@@ -128,12 +132,16 @@
 - `src/views/FeedbackView.vue` renders an event-scoped campaign from `/api/feedback/events/:eventId`; campaigns are open when manually set to `active`, or when draft with auto-open enabled and the event status is `completed`. The default auto-open response window starts at the event date and closes 3 days later unless an explicit campaign close time is set.
 - `src/views/ArchiveEventView.vue` checks `/api/feedback/events/:eventId/status` and shows the community “Give Feedback” CTA only while the form is open.
 - `src/views/DashboardView.vue` renders the community hub: featured event/CFP, live quiz join, recent talks, and top members from the shared `/api/overview` query.
+- `src/views/EventsView.vue` now mirrors the DevCongress website meetup listing shape and routes cards into `src/views/EventView.vue`, keeping meetup context separate from the archive.
+- `src/views/EventView.vue` consumes `/api/public/meetups/:slug` to render the meetup cover, schedule, speakers, photos, and status CTA, while `Archive` remains the talk/slides recap surface.
 - `src/views/ArchiveView.vue` filters completed events by year, query, topic, and speaker while reusing the same shared `/api/overview` query cache as the home route.
 - `src/views/NotFoundView.vue` is mounted by the final Vue Router catch-all route for unknown client paths.
 - `src/views/admin/AdminAttendanceOverviewView.vue` renders the monthly attendance ledger, import coverage, source-quality readout, repeat-attendee count, and venue-planning summary from `/api/attendance/monthly`.
 - `src/views/admin/AdminFeedbackOverviewView.vue` renders the route-level App Feedback Inbox from the shared `/api/feedback/inbox` query above the monthly event-feedback report, and uses optimistic mutation plus query invalidation when organizers move route feedback through `new`, `reviewing`, `done`, and `wont_fix`.
-- `src/views/admin/AdminEventsView.vue` reads the organizer event list through the shared TanStack query layer and invalidates the event-list plus overview queries after creating a new event.
+- `src/views/admin/AdminEventsView.vue` reads the organizer event list through the shared TanStack query layer, can upload a picked cover image during event creation, imports existing Luma events into Supabase from the create-event page, and invalidates the event-list plus overview queries after creating a new event.
 - `src/views/admin/AdminEventView.vue` invalidates shared event/overview queries after checklist, photo-link, and media-upload mutations so status and media changes stay visible across routes.
+- `src/lib/meetup-media-client.ts` centralizes browser-side meetup image validation, compression, and upload helpers so organizer create/edit surfaces share the same storage limits and encoding behavior.
+- `src/lib/event-form.ts` centralizes Zod validation for organizer event creation so the create form and `/api/events` server endpoint share the same required-field, slug, date, and URL rules.
 - `src/views/admin/AdminAttendanceView.vue` uploads/replaces a Luma CSV and renders post-event import metrics, source/ticket breakdowns, checked-in guests, and approved no-shows.
 - `src/views/admin/AdminEventView.vue` renders the shared chronological event checklist from `/api/events/:eventId/checklist`; checking status milestones can advance the event state, while the status dropdown remains available for manual correction.
 - `src/views/admin/AdminEventView.vue` also manages event media: organizers can upload selected cover/photo images to Supabase Storage or add website-compatible `{ url, type }` links where `type` is `image` for direct media or `folder` for shared galleries.

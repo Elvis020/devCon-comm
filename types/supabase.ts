@@ -110,6 +110,10 @@ export interface Database {
           target_type: string | null;
           target_id: string | null;
           metadata: Json;
+          ip_address: string | null;
+          user_agent: string | null;
+          request_method: string | null;
+          request_path: string | null;
           created_at: string;
         };
         Insert: {
@@ -121,6 +125,10 @@ export interface Database {
           target_type?: string | null;
           target_id?: string | null;
           metadata?: Json;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          request_method?: string | null;
+          request_path?: string | null;
           created_at?: string;
         };
         Update: {
@@ -132,6 +140,10 @@ export interface Database {
           target_type?: string | null;
           target_id?: string | null;
           metadata?: Json;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          request_method?: string | null;
+          request_path?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -158,6 +170,10 @@ export interface Database {
           videos: Json[];
           publish_to_website: boolean;
           website_source_id: string | null;
+          external_source: string | null;
+          external_id: string | null;
+          external_url: string | null;
+          external_synced_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -182,6 +198,10 @@ export interface Database {
           videos?: Json[];
           publish_to_website?: boolean;
           website_source_id?: string | null;
+          external_source?: string | null;
+          external_id?: string | null;
+          external_url?: string | null;
+          external_synced_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -206,6 +226,10 @@ export interface Database {
           videos?: Json[];
           publish_to_website?: boolean;
           website_source_id?: string | null;
+          external_source?: string | null;
+          external_id?: string | null;
+          external_url?: string | null;
+          external_synced_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };

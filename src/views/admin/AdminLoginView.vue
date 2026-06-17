@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { adminPath } from '@/src/admin-routes';
+import { ADMIN_LOGIN_COOLDOWN_STORAGE_KEY, readAdminAuthResponsePayload } from '@/src/lib/admin-auth-client';
 import { fetchAdminSession } from '@/src/lib/api';
 import { notify } from '@/src/lib/notify';
 
@@ -17,31 +18,19 @@ const cooldownUntil = ref(0);
 const nowMs = ref(Date.now());
 let cooldownTimer: number | undefined;
 const ADMIN_LOGIN_TOAST_ID = 'admin-login-toast';
-const ADMIN_LOGIN_COOLDOWN_STORAGE_KEY = 'devcon-admin-login-cooldown-until';
 
 const cooldownRemainingMs = computed(() => Math.max(0, cooldownUntil.value - nowMs.value));
 const cooldownRemainingSeconds = computed(() => Math.ceil(cooldownRemainingMs.value / 1000));
 const resendDisabled = computed(() => authMode.value === 'supabase' && cooldownRemainingMs.value > 0);
-
-async function readResponsePayload(response: Response): Promise<{ message: string; retryAfterMs: number | null }> {
-  try {
-    const data = await response.json();
-    return {
-      message: typeof data.error === 'string' ? data.error : 'Unable to sign in',
-      retryAfterMs: typeof data.retry_after_ms === 'number' ? data.retry_after_ms : null,
-    };
-  } catch {
-    return {
-      message: 'Unable to sign in. Please check your connection and try again.',
-      retryAfterMs: null,
-    };
-  }
-}
+const formInputDisabled = computed(() => loading.value || resendDisabled.value);
 
 function startCooldown(retryAfterMs: number) {
   cooldownUntil.value = Date.now() + retryAfterMs;
   nowMs.value = Date.now();
   window.localStorage.setItem(ADMIN_LOGIN_COOLDOWN_STORAGE_KEY, String(cooldownUntil.value));
+  if (document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur();
+  }
 
   if (cooldownTimer !== undefined) {
     window.clearInterval(cooldownTimer);
@@ -90,7 +79,7 @@ async function login() {
     });
 
     if (!response.ok) {
-      const { message, retryAfterMs } = await readResponsePayload(response);
+      const { message, retryAfterMs } = await readAdminAuthResponsePayload(response);
       if (retryAfterMs) {
         startCooldown(retryAfterMs);
       }
@@ -103,7 +92,6 @@ async function login() {
       if (typeof payload.retry_after_ms === 'number') {
         startCooldown(payload.retry_after_ms);
       }
-      email.value = '';
       notifyAdminLogin(
         'success',
         payload.message ?? 'If this email is allowed, a secure organizer sign-in link has been sent.',
@@ -115,53 +103,6 @@ async function login() {
     await router.push(redirectTo.value);
   } catch {
     notifyAdminLogin('error', 'Unable to sign in. Please check your connection and try again.', 7000);
-  } finally {
-    loading.value = false;
-  }
-}
-
-function clearAuthHash() {
-  window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
-}
-
-async function exchangeSupabaseHash(): Promise<boolean> {
-  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-  const hashError = hashParams.get('error_description') || hashParams.get('error');
-  const accessToken = hashParams.get('access_token');
-
-  if (hashError) {
-    error.value = hashError;
-    clearAuthHash();
-    return true;
-  }
-
-  if (!accessToken) return false;
-
-  loading.value = true;
-  error.value = null;
-
-  try {
-    const response = await fetch('/api/auth/admin/exchange', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ access_token: accessToken }),
-    });
-
-    clearAuthHash();
-
-    if (!response.ok) {
-      const { message } = await readResponsePayload(response);
-      error.value = message;
-      return true;
-    }
-
-    await router.replace(redirectTo.value);
-    return true;
-  } catch {
-    clearAuthHash();
-    error.value = 'Unable to finish sign in. Please request a new link.';
-    return true;
   } finally {
     loading.value = false;
   }
@@ -180,10 +121,6 @@ onMounted(async () => {
   const callbackError = route.query.error;
   if (typeof callbackError === 'string' && callbackError) {
     error.value = callbackError;
-  }
-
-  if (window.location.hash && await exchangeSupabaseHash()) {
-    return;
   }
 
   try {
@@ -221,6 +158,7 @@ onUnmounted(() => {
             autofocus
             required
             class="editorial-input mt-2"
+            :disabled="formInputDisabled"
             type="email"
             autocomplete="email"
             placeholder="organizer@devcongress.org"
@@ -234,6 +172,7 @@ onUnmounted(() => {
             autofocus
             required
             class="editorial-input mt-2"
+            :disabled="loading"
             type="password"
             autocomplete="current-password"
             placeholder="Admin password"

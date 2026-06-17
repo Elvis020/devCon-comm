@@ -30,6 +30,10 @@ export type CreateCommunityEventInput = {
   stream_url?: string | null;
   embed_stream?: boolean;
   publish_to_website?: boolean;
+  external_source?: string | null;
+  external_id?: string | null;
+  external_url?: string | null;
+  external_synced_at?: string | null;
 };
 
 export function canUseSupabaseCommunityEvents(c?: Context): boolean {
@@ -61,13 +65,47 @@ export async function getSupabaseCommunityEventById(id: string, c?: Context): Pr
   return data ? toEvent(data) : undefined;
 }
 
+export async function getSupabaseCommunityEventByExternalId(
+  source: string,
+  externalId: string,
+  c?: Context,
+): Promise<Event | null | undefined> {
+  if (!canUseSupabaseCommunityEvents(c)) return null;
+
+  const { data, error } = await getSupabaseAdminClient(c)
+    .from('community_events')
+    .select('*')
+    .eq('external_source', source)
+    .eq('external_id', externalId)
+    .maybeSingle();
+
+  if (error) return null;
+  return data ? toEvent(data) : undefined;
+}
+
+export async function getSupabaseCommunityEventByRegistrationUrl(
+  registrationUrl: string,
+  c?: Context,
+): Promise<Event | null | undefined> {
+  if (!canUseSupabaseCommunityEvents(c)) return null;
+
+  const { data, error } = await getSupabaseAdminClient(c)
+    .from('community_events')
+    .select('*')
+    .eq('registration_url', registrationUrl)
+    .maybeSingle();
+
+  if (error) return null;
+  return data ? toEvent(data) : undefined;
+}
+
 export async function createSupabaseCommunityEvent(input: CreateCommunityEventInput, c?: Context): Promise<Event | null> {
   if (!canUseSupabaseCommunityEvents(c)) return null;
 
   const startsAt = new Date(input.event_date);
   const endsAt = input.end_date ? new Date(input.end_date) : defaultEndDate(startsAt);
   const location = input.location ?? DEFAULT_LOCATION;
-  const insert: CommunityEventInsert = {
+  const baseInsert: CommunityEventInsert = {
     slug: input.slug?.trim() || uniqueSlug(slugify(input.name)),
     name: input.name,
     description: input.description,
@@ -83,15 +121,42 @@ export async function createSupabaseCommunityEvent(input: CreateCommunityEventIn
     embed_stream: input.embed_stream ?? false,
     publish_to_website: input.publish_to_website ?? false,
   };
+  const insertWithExternal: CommunityEventInsert = {
+    ...baseInsert,
+    external_source: input.external_source ?? null,
+    external_id: input.external_id ?? null,
+    external_url: input.external_url ?? null,
+    external_synced_at: input.external_synced_at ?? null,
+  };
 
   const { data, error } = await getSupabaseAdminClient(c)
     .from('community_events')
-    .insert(insert)
+    .insert(insertWithExternal)
     .select('*')
     .single();
 
+  if (error && hasExternalMetadata(input) && isMissingExternalMetadataColumn(error.message)) {
+    const fallback = await getSupabaseAdminClient(c)
+      .from('community_events')
+      .insert(baseInsert)
+      .select('*')
+      .single();
+
+    if (fallback.error) throw new Error(fallback.error.message);
+    return toEvent(fallback.data);
+  }
+
   if (error) throw new Error(error.message);
   return toEvent(data);
+}
+
+function hasExternalMetadata(input: CreateCommunityEventInput): boolean {
+  return Boolean(input.external_source || input.external_id || input.external_url || input.external_synced_at);
+}
+
+function isMissingExternalMetadataColumn(message: string): boolean {
+  return /external_(source|id|url|synced_at)/i.test(message)
+    && /(column|schema cache|does not exist|could not find)/i.test(message);
 }
 
 export async function updateSupabaseCommunityEvent(
@@ -114,6 +179,10 @@ export async function updateSupabaseCommunityEvent(
   if (typeof input.embed_stream === 'boolean') update.embed_stream = input.embed_stream;
   if (typeof input.registration_url === 'string' || input.registration_url === null) update.registration_url = input.registration_url ?? null;
   if (typeof input.publish_to_website === 'boolean') update.publish_to_website = input.publish_to_website;
+  if (typeof input.external_source === 'string' || input.external_source === null) update.external_source = input.external_source ?? null;
+  if (typeof input.external_id === 'string' || input.external_id === null) update.external_id = input.external_id ?? null;
+  if (typeof input.external_url === 'string' || input.external_url === null) update.external_url = input.external_url ?? null;
+  if (typeof input.external_synced_at === 'string' || input.external_synced_at === null) update.external_synced_at = input.external_synced_at ?? null;
   if (input.location && typeof input.location === 'object') {
     const location = input.location as Event['location'];
     update.location_label = location?.label ?? null;
@@ -133,6 +202,18 @@ export async function updateSupabaseCommunityEvent(
 
   if (error) throw new Error(error.message);
   return data ? toEvent(data) : undefined;
+}
+
+export async function deleteSupabaseCommunityEvent(id: string, c?: Context): Promise<boolean | null> {
+  if (!canUseSupabaseCommunityEvents(c)) return null;
+
+  const { error, count } = await getSupabaseAdminClient(c)
+    .from('community_events')
+    .delete({ count: 'exact' })
+    .eq('id', id);
+
+  if (error) throw new Error(error.message);
+  return (count ?? 0) > 0;
 }
 
 export async function getSupabasePublicMeetups(origin: string, c?: Context): Promise<PublicMeetup[] | null> {
@@ -170,6 +251,10 @@ function toEvent(row: CommunityEventRow): Event {
     photos: normalizePhotos(row.photos),
     videos: normalizeVideos(row.videos),
     publish_to_website: row.publish_to_website,
+    external_source: row.external_source,
+    external_id: row.external_id,
+    external_url: row.external_url,
+    external_synced_at: row.external_synced_at,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };

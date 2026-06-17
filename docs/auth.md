@@ -8,8 +8,8 @@ DevCon-Comm uses Supabase Auth for hosted organizer access and keeps a local sha
 2. The email is stored in `public.admin_memberships` with role `owner` or `organizer`.
 3. The organizer signs in from `/organizer-console/login`.
 4. The server checks the email against active `admin_memberships`, then asks Supabase Auth to send an email OTP magic link.
-5. Supabase redirects back to `/organizer-console/login` with its verified sign-in fragment.
-6. The login page immediately posts the access token to `/api/auth/admin/exchange`, then clears the fragment from the URL.
+5. Supabase redirects back to `/organizer-console/auth/callback` with its verified sign-in fragment.
+6. The callback page immediately posts the access token to `/api/auth/admin/exchange`, then clears the fragment from the URL and redirects into the organizer console.
 7. Hono verifies the token with Supabase, checks the membership again, stores an app-owned row in `admin_sessions`, and sets the `devcon_admin` HTTP-only cookie.
 8. Organizer APIs call `requireAdmin`, which validates the session cookie, active membership, role, and request origin.
 
@@ -19,7 +19,7 @@ The browser does not persist Supabase access or refresh tokens. The app cookie c
 
 | Role | Access |
 |---|---|
-| `owner` | Full organizer access plus organizer email management |
+| `owner` | Full organizer access plus organizer email management and audit log review |
 | `organizer` | Organizer console and admin mutations, excluding organizer email management |
 
 ## Tables
@@ -28,7 +28,13 @@ The browser does not persist Supabase access or refresh tokens. The app cookie c
 |---|---|
 | `admin_memberships` | Organizer email allowlist, role, status, and last login |
 | `admin_sessions` | Hashed app session tokens and expiry metadata |
-| `admin_audit_log` | Security-sensitive admin actions such as login, organizer add/update, and organizer disable |
+| `admin_audit_log` | Security-sensitive admin actions with actor, target, request path, IP, user-agent, and compact metadata |
+
+## Audit Log
+
+Owners can review recent admin activity at `/organizer-console/audit-log`. The ledger is backed by `public.admin_audit_log` and records successful organizer mutations such as login/logout, organizer allowlist changes, Luma imports, event and checklist edits, media uploads, feedback status changes, attendance CSV import/removal, speaker access changes, talk review actions, and quiz builder changes.
+
+Audit metadata should stay small and non-sensitive. Store identifiers, counts, statuses, and changed field names rather than raw CSV contents, feedback text, magic links, or full request bodies.
 
 ## Bootstrap
 
@@ -73,5 +79,6 @@ This fallback is for local development only. Hosted environments should configur
 - Cookies use `SameSite=Lax` by default. Split-origin deployments that configure `PUBLIC_FRONTEND_ORIGIN` use `SameSite=None; Secure`.
 - State-changing admin requests reject unexpected `Origin` headers.
 - Organizer management requires `owner` role.
+- Audit log review requires `owner` role.
 - Disabling a membership blocks future session validation for that email.
 - The Supabase service-role key is used only on the server and must never use a `VITE_` prefix.

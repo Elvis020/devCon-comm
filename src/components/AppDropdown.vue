@@ -16,6 +16,7 @@ const props = defineProps<{
   options: DropdownOption[];
   label?: string;
   disabled?: boolean;
+  menuAlign?: 'left' | 'right';
   menuClass?: string;
 }>();
 
@@ -81,6 +82,13 @@ function handleDocumentClick(event: MouseEvent) {
   closeDropdown();
 }
 
+function handleDocumentPointerDown(event: PointerEvent) {
+  if (root.value?.contains(event.target as Node)) {
+    return;
+  }
+  closeDropdown();
+}
+
 function handleEscape(event: KeyboardEvent) {
   if (event.key === 'Escape') {
     closeDropdown();
@@ -95,6 +103,7 @@ function handleDropdownOpen(event: Event) {
 }
 
 onMounted(() => {
+  document.addEventListener('pointerdown', handleDocumentPointerDown, true);
   document.addEventListener('click', handleDocumentClick);
   document.addEventListener('keydown', handleEscape);
   document.addEventListener('app-dropdown:open', handleDropdownOpen as EventListener);
@@ -103,6 +112,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  document.removeEventListener('pointerdown', handleDocumentPointerDown, true);
   document.removeEventListener('click', handleDocumentClick);
   document.removeEventListener('keydown', handleEscape);
   document.removeEventListener('app-dropdown:open', handleDropdownOpen as EventListener);
@@ -152,8 +162,9 @@ watch(open, async (isOpen) => {
     <Transition name="dropdown-menu" :duration="{ enter: 180, leave: 0 }">
       <div
         v-if="open"
-        class="app-dropdown-menu absolute left-0 z-50 w-full overflow-hidden rounded-lg border-2 border-dc-ink bg-dc-paper shadow-[3px_3px_0_#111111]"
+        class="app-dropdown-menu absolute z-50 w-full overflow-hidden rounded-lg border-2 border-dc-ink bg-dc-paper shadow-[3px_3px_0_#111111]"
         :class="[
+          menuAlign === 'right' ? 'left-auto right-0' : 'left-0',
           placement === 'top' ? 'bottom-[calc(100%+0.5rem)]' : 'top-[calc(100%+0.5rem)]',
           menuClass,
         ]"

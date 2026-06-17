@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import AppDropdown from '@/src/components/AppDropdown.vue';
 import AdminFeedbackPageSkeleton from '@/src/components/ui/page-skeletons/AdminFeedbackPageSkeleton.vue';
+import { notify } from '@/src/lib/notify';
 import type { EventFeedbackSubmission, FeedbackCampaign, FeedbackQuestion, FeedbackQuestionType } from '@/types';
 
 interface FeedbackCampaignResponse {
@@ -19,7 +20,6 @@ interface FeedbackCampaignResponse {
 const route = useRoute();
 const loading = ref(true);
 const saving = ref(false);
-const saved = ref(false);
 const error = ref('');
 const publicUrl = ref('');
 const isOpen = ref(false);
@@ -108,7 +108,6 @@ async function fetchCampaign() {
 
 async function saveCampaign() {
   saving.value = true;
-  saved.value = false;
   error.value = '';
 
   const response = await fetch(`/api/events/${route.params.eventId}/feedback-campaign`, {
@@ -128,7 +127,7 @@ async function saveCampaign() {
   if (response.ok) {
     const data = await response.json();
     hydrateCampaign({ ...data, submissions: submissions.value });
-    saved.value = true;
+    notify.success('Feedback campaign saved.', { id: 'feedback-campaign-saved' });
   } else {
     const payload = await response.json().catch(() => ({}));
     error.value = payload.error ?? 'Unable to save feedback campaign';
@@ -243,8 +242,6 @@ onBeforeUnmount(() => {
         </header>
 
         <div v-if="error" class="mb-6 rounded-md border-2 border-red-700 bg-red-50 p-4 text-sm font-semibold text-red-800">{{ error }}</div>
-        <div v-if="saved" class="mb-6 rounded-md border-2 border-dc-success bg-dc-success-soft p-4 text-sm font-semibold text-dc-success">Feedback campaign saved.</div>
-
         <section class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
           <form class="space-y-6" @submit.prevent="saveCampaign">
             <div class="editorial-panel p-5">

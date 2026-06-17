@@ -1,10 +1,17 @@
 <script setup lang="ts">
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
 import { computed, reactive, ref } from 'vue';
+import { z } from 'zod';
 import AppDropdown from '@/src/components/AppDropdown.vue';
 import AdminOrganizersPageSkeleton from '@/src/components/ui/page-skeletons/AdminOrganizersPageSkeleton.vue';
 import { fetchAdminOrganizers, queryKeys, type OrganizerMembership, type OrganizerMembershipsResponse } from '@/src/lib/api';
 import type { AdminRole } from '@/types/supabase';
+
+const addOrganizerSchema = z.object({
+  email: z.string().trim().email('Enter a valid organizer email.'),
+  display_name: z.string().trim().optional(),
+  role: z.enum(['owner', 'organizer']),
+});
 
 const queryClient = useQueryClient();
 const actionError = ref('');
@@ -29,6 +36,8 @@ const activeOrganizers = computed(() => organizers.value.filter((organizer) => o
 const ownerCount = computed(() => activeOrganizers.value.filter((organizer) => organizer.role === 'owner').length);
 const loading = computed(() => organizersQuery.isPending.value);
 const error = computed(() => actionError.value || organizersQuery.error.value?.message || '');
+const addOrganizerValidation = computed(() => addOrganizerSchema.safeParse(form));
+const canAddOrganizer = computed(() => addOrganizerValidation.value.success && !addOrganizerMutation.isPending.value);
 
 async function readError(response: Response): Promise<string> {
   const payload = await response.json().catch(() => null) as { error?: string } | null;
@@ -37,14 +46,15 @@ async function readError(response: Response): Promise<string> {
 
 const addOrganizerMutation = useMutation({
   mutationFn: async () => {
+    const parsed = addOrganizerSchema.parse(form);
     const response = await fetch('/api/admin/organizers', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: form.email,
-        display_name: form.display_name,
-        role: form.role,
+        email: parsed.email,
+        display_name: parsed.display_name ?? '',
+        role: parsed.role,
       }),
     });
 
@@ -105,7 +115,11 @@ const disableOrganizerMutation = useMutation({
 });
 
 function submitOrganizer() {
-  if (addOrganizerMutation.isPending.value) return;
+  if (!canAddOrganizer.value) {
+    actionError.value = 'Enter a valid organizer email.';
+    return;
+  }
+  actionError.value = '';
   addOrganizerMutation.mutate();
 }
 
@@ -156,7 +170,8 @@ function roleLabel(role: AdminRole): string {
           </p>
         </div>
 
-        <form v-else class="editorial-panel mb-6 grid gap-4 p-5 md:grid-cols-[1.2fr_1fr_160px_auto] md:items-end" @submit.prevent="submitOrganizer">
+        <form v-else class="mb-5 rounded-md border border-dc-border bg-dc-paper p-4" @submit.prevent="submitOrganizer">
+          <div class="grid gap-3 md:grid-cols-[1.1fr_0.9fr_150px_auto] md:items-end">
           <label>
             <span class="editorial-label">Email</span>
             <input v-model="form.email" required type="email" class="editorial-input mt-2 font-mono" placeholder="organizer@devcongress.org">
@@ -166,41 +181,50 @@ function roleLabel(role: AdminRole): string {
             <input v-model="form.display_name" class="editorial-input mt-2 font-mono" placeholder="Optional">
           </label>
           <AppDropdown v-model="form.role" label="Role" :options="roleOptions" menu-class="min-w-48" />
-          <button class="editorial-action justify-center disabled:opacity-60" :disabled="addOrganizerMutation.isPending.value">
+          <button class="editorial-action min-h-[50px] justify-center px-5 disabled:cursor-not-allowed disabled:opacity-60" :disabled="!canAddOrganizer">
             {{ addOrganizerMutation.isPending.value ? 'Saving...' : 'Add Email' }}
           </button>
+          </div>
         </form>
 
-        <section class="editorial-panel overflow-hidden">
-          <div class="border-b-2 border-dc-border bg-dc-paper-warm p-5">
-            <p class="editorial-eyebrow">allowlist</p>
-            <h2 class="mt-2 text-2xl font-black text-dc-ink">{{ activeOrganizers.length }} active organizer{{ activeOrganizers.length === 1 ? '' : 's' }}</h2>
+        <section class="overflow-hidden rounded-md border border-dc-border bg-dc-paper">
+          <div class="flex flex-col gap-2 border-b border-dc-border bg-dc-paper-warm px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p class="editorial-eyebrow mb-1">allowlist</p>
+              <h2 class="text-xl font-black tracking-tight text-dc-ink">{{ activeOrganizers.length }} active organizer{{ activeOrganizers.length === 1 ? '' : 's' }}</h2>
+            </div>
+            <p class="font-mono text-[11px] font-bold uppercase tracking-wide text-dc-gray">
+              {{ organizers.length }} total
+            </p>
           </div>
 
-          <div v-if="organizers.length === 0" class="p-6 text-sm text-dc-gray">
+          <div v-if="organizers.length === 0" class="px-4 py-6 text-sm text-dc-gray">
             No organizer emails have been added yet.
           </div>
 
-          <div v-else class="divide-y-2 divide-dc-border">
+          <div v-else class="divide-y divide-dc-border">
             <article
               v-for="organizer in organizers"
               :key="organizer.id"
-              class="grid gap-4 p-5 md:grid-cols-[1fr_150px_150px_auto] md:items-center"
+              class="grid gap-3 px-4 py-3 md:grid-cols-[minmax(0,1fr)_8rem_8rem_auto] md:items-center"
               :class="{ 'opacity-55': organizer.status === 'disabled' }"
             >
-              <div>
-                <h3 class="font-mono text-base font-black text-dc-ink">{{ organizer.email }}</h3>
-                <p class="mt-1 text-sm text-dc-gray">{{ organizer.display_name || 'No display name' }}</p>
-                <p class="mt-2 text-xs font-semibold uppercase tracking-wide text-dc-gray">Last login: {{ formatDateTime(organizer.last_login_at) }}</p>
+              <div class="min-w-0">
+                <h3 class="truncate font-mono text-sm font-black text-dc-ink">{{ organizer.email }}</h3>
+                <p class="mt-1 truncate text-sm text-dc-gray">
+                  {{ organizer.display_name || 'No display name' }}
+                  <span class="mx-2 text-dc-border">/</span>
+                  Last login: {{ formatDateTime(organizer.last_login_at) }}
+                </p>
               </div>
-              <div class="rounded-md border-2 border-dc-border bg-dc-paper px-3 py-2 text-center font-mono text-xs font-bold uppercase tracking-wide text-dc-ink">
+              <div class="font-mono text-[11px] font-bold uppercase tracking-wide text-dc-gray md:text-center">
                 {{ roleLabel(organizer.role) }}
               </div>
-              <div class="rounded-md border-2 px-3 py-2 text-center font-mono text-xs font-bold uppercase tracking-wide" :class="organizer.status === 'active' ? 'border-dc-success bg-dc-success-soft text-dc-success' : 'border-dc-border bg-dc-paper-warm text-dc-gray'">
+              <div class="font-mono text-[11px] font-bold uppercase tracking-wide md:text-center" :class="organizer.status === 'active' ? 'text-dc-success' : 'text-dc-gray'">
                 {{ organizer.status }}
               </div>
               <button
-                class="editorial-secondary-action justify-center disabled:cursor-not-allowed disabled:opacity-50"
+                class="motion-press justify-self-start rounded-md border border-dc-border bg-dc-paper px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-wide text-dc-gray hover:border-dc-ink hover:text-dc-ink disabled:cursor-not-allowed disabled:opacity-40 md:justify-self-end"
                 :disabled="authMode === 'local' || organizer.status !== 'active' || (organizer.role === 'owner' && ownerCount <= 1) || disableOrganizerMutation.isPending.value"
                 type="button"
                 @click="disableOrganizer(organizer)"

@@ -1,4 +1,4 @@
-import type { Event, LeaderboardEntry, QuizSession, Talk } from '@/types';
+import type { Event, LeaderboardEntry, PublicMeetup, QuizSession, Talk } from '@/types';
 import type { FeedbackKind, FeedbackStatus } from '@/types/supabase';
 import type { AdminMembershipStatus, AdminRole } from '@/types/supabase';
 
@@ -122,6 +122,60 @@ export interface OrganizerMembershipsResponse {
   auth_mode: 'supabase' | 'local';
 }
 
+export interface AdminAuditLogEntry {
+  id: string;
+  actor_email: string | null;
+  actor_role: AdminRole | null;
+  action: string;
+  target_type: string | null;
+  target_id: string | null;
+  metadata: Record<string, unknown>;
+  ip_address: string | null;
+  user_agent: string | null;
+  request_method: string | null;
+  request_path: string | null;
+  created_at: string;
+}
+
+export interface AdminAuditLogResponse {
+  logs: AdminAuditLogEntry[];
+  auth_mode: 'supabase' | 'local';
+}
+
+export interface LumaImportResponse {
+  event: Event;
+  already_imported: boolean;
+}
+
+export interface LumaEventPreview {
+  name: string;
+  description: string | null;
+  event_date: string;
+  end_date: string | null;
+  cover: string | null;
+  registration_url: string | null;
+  location: Event['location'];
+  publish_to_website: boolean;
+  external_source: string;
+  external_id: string;
+  external_url: string | null;
+  external_synced_at: string;
+}
+
+export interface LumaPreviewResponse {
+  preview: LumaEventPreview;
+  existing_event: Event | null;
+  already_imported: boolean;
+}
+
+export interface PublicMeetupsResponse {
+  data: PublicMeetup[];
+}
+
+export interface PublicMeetupResponse {
+  data: PublicMeetup;
+}
+
 export const queryKeys = {
   overview: ['overview'] as const,
   events: ['events'] as const,
@@ -129,6 +183,7 @@ export const queryKeys = {
   routeFeedbackInbox: ['route-feedback-inbox'] as const,
   adminSession: ['admin-session'] as const,
   adminOrganizers: ['admin-organizers'] as const,
+  adminAuditLog: (filters?: Record<string, string>) => ['admin-audit-log', filters ?? {}] as const,
   event: (eventId: string) => ['events', eventId] as const,
   eventChecklist: (eventId: string) => ['event-checklist', eventId] as const,
 };
@@ -165,6 +220,39 @@ export function fetchEvents() {
   return fetchJson<Event[]>('/api/events');
 }
 
+export function deleteEventById(eventId: string) {
+  return fetchJson<{ ok: true }>(`/api/events/${eventId}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+}
+
+export function fetchPublicMeetups() {
+  return fetchJson<PublicMeetupsResponse>('/api/public/meetups');
+}
+
+export function fetchPublicMeetup(slug: string) {
+  return fetchJson<PublicMeetupResponse>(`/api/public/meetups/${slug}`);
+}
+
+export function importLumaEventUrl(eventUrl: string) {
+  return fetchJson<LumaImportResponse>('/api/integrations/luma/import', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event_url: eventUrl }),
+  });
+}
+
+export function previewLumaEventUrl(eventUrl: string) {
+  return fetchJson<LumaPreviewResponse>('/api/integrations/luma/preview', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event_url: eventUrl }),
+  });
+}
+
 export function fetchFeedbackMonths() {
   return fetchJson<FeedbackMonthsResponse>('/api/feedback/monthly');
 }
@@ -179,4 +267,13 @@ export function fetchAdminSession() {
 
 export function fetchAdminOrganizers() {
   return fetchJson<OrganizerMembershipsResponse>('/api/admin/organizers', { credentials: 'include' });
+}
+
+export function fetchAdminAuditLog(filters: { actor?: string; action?: string; target_type?: string; limit?: string } = {}) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) params.set(key, value);
+  }
+  const query = params.toString();
+  return fetchJson<AdminAuditLogResponse>(`/api/admin/audit-log${query ? `?${query}` : ''}`, { credentials: 'include' });
 }

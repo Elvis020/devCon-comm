@@ -127,6 +127,11 @@ function adminLoginPath(c: Context): string {
   return `${basePath}/login`;
 }
 
+function adminAuthCallbackPath(c: Context): string {
+  const basePath = `/${(envValue('VITE_ADMIN_BASE_PATH', c) ?? 'organizer-console').replace(/^\/+|\/+$/g, '')}`;
+  return `${basePath}/auth/callback`;
+}
+
 export function defaultAdminRedirectPath(c: Context): string {
   return adminEventsPath(c);
 }
@@ -249,7 +254,7 @@ export async function startSupabaseAdminOtp(c: Context, input: { email: unknown;
 
   const origin = originForRequest(c);
   const next = safeRedirectPath(c, input.redirectTo);
-  const redirectUrl = new URL(adminLoginRedirectPath(c, next), origin);
+  const redirectUrl = new URL(`${adminAuthCallbackPath(c)}?next=${encodeURIComponent(next)}`, origin);
   if (membership) {
     const { error } = await getBrowserSafeSupabaseClient(c).auth.signInWithOtp({
       email,
@@ -397,7 +402,8 @@ export async function recordAdminAudit(c: Context, input: {
 }) {
   if (!isSupabaseServerConfigured(c)) return;
 
-  await getSupabaseAdminClient(c)
+  const requestUrl = new URL(c.req.url);
+  const { error } = await getSupabaseAdminClient(c)
     .from('admin_audit_log')
     .insert({
       actor_user_id: input.actor_user_id ?? null,
@@ -407,7 +413,15 @@ export async function recordAdminAudit(c: Context, input: {
       target_type: input.target_type ?? null,
       target_id: input.target_id ?? null,
       metadata: (input.metadata ?? {}) as Json,
+      ip_address: requestIp(c),
+      user_agent: c.req.header('user-agent') ?? null,
+      request_method: c.req.method,
+      request_path: requestUrl.pathname,
     });
+
+  if (error) {
+    console.warn('Failed to record admin audit log:', error.message);
+  }
 }
 
 export async function requireAdmin(c: Context, roles: AdminRole[] = ['owner', 'organizer']): Promise<globalThis.Response | null> {

@@ -108,9 +108,10 @@ devcongress-comm-idea/
 - `/api/public/meetups*` — read-only DevCongress.org integration contract with CORS and short public cache headers
 - `/api/auth/session`, `/api/auth/admin/login`, `/api/auth/admin/exchange`, `/api/auth/admin/callback`, `/api/auth/logout` — organizer auth and app-owned session lifecycle
 - `/api/admin/organizers*` — owner-only organizer email allowlist management
+- `/api/admin/audit-log` — owner-only audit ledger for organizer sign-ins and successful admin mutations
 - `/api/attendance/monthly` — admin-only monthly attendance ledger, import coverage, and cross-month insights
 - `/api/events` — all events, create event
-- `/api/events/[eventId]` — event detail/status update
+- `/api/events/[eventId]` — event detail, status update, and admin-only removal
 - `/api/events/[eventId]/checklist` — admin-only chronological organizer checklist with status-changing milestones
 - `/api/events/[eventId]/talks` — talks for event
 - `/api/events/[eventId]/attendance` — admin-only attendance summary for the latest Luma import
@@ -119,6 +120,8 @@ devcongress-comm-idea/
 - `/api/events/[eventId]/speakers*` — speaker allowlist CRUD
 - `/api/events/[eventId]/feedback-campaign` — admin feedback campaign setup, public link, and response list
 - `/api/events/[eventId]/validate-speaker` — CFP speaker allowlist validation
+- `/api/integrations/luma/preview` — organizer-only public Luma URL preview without creating an event
+- `/api/integrations/luma/import` — organizer-only public Luma URL import after preview
 - `/api/feedback/events/[eventId]` — public feedback campaign payload when open
 - `/api/feedback/events/[eventId]/status` — public feedback availability for community CTAs
 - `/api/feedback/events/[eventId]/submissions` — public structured event feedback submission

@@ -1396,7 +1396,9 @@
   .skeleton-card-media {
     position: relative;
     overflow: hidden;
-    background: #ebe6d8;
+    background: #e4dfd3;
+    animation: skeleton-pulse 1.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+    will-change: opacity;
   }
 
   .skeleton-chip::after,
@@ -1417,13 +1419,7 @@
   .skeleton-avatar::after,
   .skeleton-score::after,
   .skeleton-card-media::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.64), transparent);
-    transform: translate3d(-110%, 0, 0);
-    animation: skeleton-sheen 1.35s var(--motion-smooth) infinite;
-    will-change: transform;
+    content: none;
   }
 
   .skeleton-eyebrow {
@@ -1463,19 +1459,19 @@
   }
 
   .skeleton-chip {
-    @apply h-9 w-52 rounded-md border-2 border-dc-ink;
+    @apply h-9 w-52 rounded-md border border-dc-border;
   }
 
   .skeleton-button {
-    @apply h-12 w-40 rounded-md border-2 border-dc-ink;
+    @apply h-12 w-40 rounded-md border border-dc-border;
   }
 
   .skeleton-button--secondary {
-    @apply bg-dc-yellow/50;
+    background: #ddd7ca;
   }
 
   .skeleton-media {
-    @apply min-h-[22rem] rounded-lg border-2 border-dc-ink bg-dc-paper shadow-[3px_3px_0_#111111];
+    @apply min-h-[22rem] rounded-lg border border-dc-border bg-dc-paper shadow-[0_1px_0_rgba(17,17,17,0.08)];
   }
 
   .skeleton-summary-card {
@@ -1515,7 +1511,7 @@
   }
 
   .skeleton-dot {
-    @apply mt-1 size-4 rounded-full bg-dc-yellow/70;
+    @apply mt-1 size-4 rounded-full;
   }
 
   .skeleton-stat-card {
@@ -1569,17 +1565,17 @@
         to bottom,
         transparent 0,
         transparent 4.65rem,
-        rgba(17, 17, 17, 0.08) 4.65rem,
-        rgba(17, 17, 17, 0.08) 4.72rem
+        rgba(17, 17, 17, 0.06) 4.65rem,
+        rgba(17, 17, 17, 0.06) 4.72rem
       );
   }
 
   .skeleton-card {
-    @apply overflow-hidden border-2 border-dc-ink shadow-[3px_3px_0_#111111];
+    @apply overflow-hidden border border-dc-border shadow-[0_1px_0_rgba(17,17,17,0.08)];
   }
 
   .skeleton-card-media {
-    @apply aspect-video border-b-2 border-dc-ink bg-dc-ink/10;
+    @apply aspect-video border-b border-dc-border;
   }
 
   .view-skeleton--dark {
@@ -3570,9 +3566,14 @@
     }
   }
 
-  @keyframes skeleton-sheen {
+  @keyframes skeleton-pulse {
+    0%,
     100% {
-      transform: translate3d(110%, 0, 0);
+      opacity: 0.88;
+    }
+
+    50% {
+      opacity: 1;
     }
   }
 
@@ -3628,24 +3629,24 @@
       animation: none !important;
     }
 
-    .skeleton-chip::after,
-    .skeleton-eyebrow::after,
-    .skeleton-title::after,
-    .skeleton-line::after,
-    .skeleton-button::after,
-    .skeleton-media::after,
-    .skeleton-summary-card::after,
-    .skeleton-stat-card::after,
-    .skeleton-side-card::after,
-    .skeleton-form-card::after,
-    .skeleton-table::after,
-    .skeleton-dot::after,
-    .skeleton-number-pair::after,
-    .skeleton-option::after,
-    .skeleton-rank::after,
-    .skeleton-avatar::after,
-    .skeleton-score::after,
-    .skeleton-card-media::after {
+    .skeleton-chip,
+    .skeleton-eyebrow,
+    .skeleton-title,
+    .skeleton-line,
+    .skeleton-button,
+    .skeleton-media,
+    .skeleton-summary-card,
+    .skeleton-stat-card,
+    .skeleton-side-card,
+    .skeleton-form-card,
+    .skeleton-table,
+    .skeleton-dot,
+    .skeleton-number-pair,
+    .skeleton-option,
+    .skeleton-rank,
+    .skeleton-avatar,
+    .skeleton-score,
+    .skeleton-card-media {
       animation: none !important;
     }
 

@@ -5,6 +5,13 @@ import { useRoute } from 'vue-router';
 import AppDropdown from '@/src/components/AppDropdown.vue';
 import AdminEventOverviewPageSkeleton from '@/src/components/ui/page-skeletons/AdminEventOverviewPageSkeleton.vue';
 import { queryKeys } from '@/src/lib/api';
+import {
+  compressionSavingsPercent,
+  compressMeetupImageForUpload,
+  IMAGE_UPLOAD_ACCEPT,
+  uploadEventMedia,
+  validateMeetupImageFile,
+} from '@/src/lib/meetup-media-client';
 import { notify } from '@/src/lib/notify';
 import type { Event as CommunityEvent, EventChecklistItem, EventChecklistPhase, EventStatus } from '@/types';
 
@@ -23,10 +30,6 @@ const photoTypeOptions = [
   { value: 'folder', label: 'Gallery / folder' },
   { value: 'image', label: 'Single image' },
 ];
-const SOURCE_IMAGE_MAX_BYTES = 15 * 1024 * 1024;
-const TARGET_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
-const OUTPUT_IMAGE_MAX_EDGE = 1600;
-const IMAGE_UPLOAD_TYPES = new Set(['image/avif', 'image/jpeg', 'image/png', 'image/webp']);
 const checklistPhaseOrder: EventChecklistPhase[] = ['setup', 'cfp', 'program', 'event_day', 'post_event'];
 const checklistPhaseLabels: Record<EventChecklistPhase, string> = {
   setup: 'Event setup',
@@ -172,116 +175,10 @@ async function removePhotoLink(index: number) {
   await savePhotos(nextPhotos, 'Photo link removed');
 }
 
-function validateImageFile(file: File): string | null {
-  if (file.size > SOURCE_IMAGE_MAX_BYTES) {
-    return 'Image must be 15MB or smaller before compression.';
-  }
-
-  if (!IMAGE_UPLOAD_TYPES.has(file.type)) {
-    return 'Use an AVIF, JPEG, PNG, or WebP image.';
-  }
-
-  return null;
-}
-
-function compressedFileName(file: File, mimeType: string): string {
-  const extension = mimeType === 'image/webp' ? 'webp' : 'jpg';
-  const baseName = file.name
-    .replace(/\.[^.]+$/, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 48) || 'event-image';
-
-  return `${baseName}.${extension}`;
-}
-
-function canvasToBlob(canvas: HTMLCanvasElement, mimeType: string, quality: number): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (blob) resolve(blob);
-      else reject(new Error('Could not compress this image'));
-    }, mimeType, quality);
-  });
-}
-
-async function loadImageSource(file: File): Promise<HTMLImageElement | ImageBitmap> {
-  if (typeof createImageBitmap === 'function') {
-    return createImageBitmap(file, { imageOrientation: 'from-image' });
-  }
-
-  const imageUrl = URL.createObjectURL(file);
-  return new Promise<HTMLImageElement>((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(imageUrl);
-      resolve(img);
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(imageUrl);
-      reject(new Error('Could not read this image'));
-    };
-    img.src = imageUrl;
-  });
-}
-
-async function browserSupportsWebpEncoding(): Promise<boolean> {
-  const canvas = document.createElement('canvas');
-  canvas.width = 1;
-  canvas.height = 1;
-  const blob = await canvasToBlob(canvas, 'image/webp', 0.8).catch(() => null);
-  return blob?.type === 'image/webp';
-}
-
-async function compressImageForUpload(file: File): Promise<File> {
-  const image = await loadImageSource(file);
-  const sourceWidth = 'naturalWidth' in image ? image.naturalWidth : image.width;
-  const sourceHeight = 'naturalHeight' in image ? image.naturalHeight : image.height;
-  const scale = Math.min(1, OUTPUT_IMAGE_MAX_EDGE / Math.max(sourceWidth, sourceHeight));
-  const width = Math.max(1, Math.round(sourceWidth * scale));
-  const height = Math.max(1, Math.round(sourceHeight * scale));
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-
-  const context = canvas.getContext('2d', { alpha: false });
-  if (!context) {
-    throw new Error('Could not prepare image compression');
-  }
-
-  context.drawImage(image, 0, 0, width, height);
-  if ('close' in image) image.close();
-
-  const mimeType = await browserSupportsWebpEncoding() ? 'image/webp' : 'image/jpeg';
-  const qualities = [0.82, 0.74, 0.66, 0.58];
-  let bestBlob: Blob | null = null;
-
-  for (const quality of qualities) {
-    const blob = await canvasToBlob(canvas, mimeType, quality);
-    bestBlob = blob;
-    if (blob.size <= TARGET_IMAGE_MAX_BYTES) {
-      break;
-    }
-  }
-
-  if (!bestBlob) {
-    throw new Error('Could not compress this image');
-  }
-
-  if (bestBlob.size > 5 * 1024 * 1024) {
-    throw new Error('Compressed image is still over 5MB. Try a smaller image.');
-  }
-
-  return new File([bestBlob], compressedFileName(file, mimeType), {
-    type: mimeType,
-    lastModified: Date.now(),
-  });
-}
-
 async function uploadMediaFile(file: File, purpose: 'cover' | 'photo') {
   if (!event.value || mediaUploadPurpose.value) return;
 
-  const validationError = validateImageFile(file);
+  const validationError = validateMeetupImageFile(file);
   if (validationError) {
     photoError.value = validationError;
     notify.error(validationError);
@@ -292,25 +189,11 @@ async function uploadMediaFile(file: File, purpose: 'cover' | 'photo') {
   photoError.value = null;
 
   try {
-    const compressedFile = await compressImageForUpload(file);
-    const formData = new FormData();
-    formData.append('file', compressedFile);
-    formData.append('purpose', purpose);
-
-    const response = await fetch(`/api/events/${route.params.eventId}/media`, {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const payload = await response.json().catch(() => ({}));
-      throw new Error(payload.error ?? 'Failed to upload image');
-    }
-
-    const payload = await response.json();
+    const compressedFile = await compressMeetupImageForUpload(file);
+    const payload = await uploadEventMedia(String(route.params.eventId), compressedFile, purpose);
     event.value = payload.event ?? event.value;
     await invalidateEventQueries();
-    const savedPercent = file.size > 0 ? Math.max(0, Math.round((1 - compressedFile.size / file.size) * 100)) : 0;
+    const savedPercent = compressionSavingsPercent(file, compressedFile);
     notify.success(
       purpose === 'cover'
         ? `Cover compressed and uploaded${savedPercent > 0 ? ` (${savedPercent}% smaller)` : ''}`
@@ -457,7 +340,7 @@ onMounted(fetchOverview);
               <label class="event-media-upload-button" :class="{ 'opacity-60': mediaUploadPurpose === 'cover' }">
                 <input
                   type="file"
-                  accept="image/avif,image/jpeg,image/png,image/webp"
+                  :accept="IMAGE_UPLOAD_ACCEPT"
                   class="sr-only"
                   :disabled="Boolean(mediaUploadPurpose)"
                   @change="handleMediaUpload($event, 'cover')"
@@ -473,7 +356,7 @@ onMounted(fetchOverview);
               <label class="event-media-upload-button" :class="{ 'opacity-60': mediaUploadPurpose === 'photo' }">
                 <input
                   type="file"
-                  accept="image/avif,image/jpeg,image/png,image/webp"
+                  :accept="IMAGE_UPLOAD_ACCEPT"
                   class="sr-only"
                   :disabled="Boolean(mediaUploadPurpose)"
                   @change="handleMediaUpload($event, 'photo')"

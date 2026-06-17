@@ -6,7 +6,7 @@ import AdminEventTabs from './components/AdminEventTabs.vue';
 import AppToaster from './components/ui/AppToaster.vue';
 import FeedbackBot from './components/FeedbackBot.vue';
 import { adminPath, isAdminPath } from './admin-routes';
-import { fetchRouteFeedbackInbox, queryKeys, type RouteFeedbackSummary } from './lib/api';
+import { fetchAdminSession, fetchRouteFeedbackInbox, queryKeys, type RouteFeedbackSummary } from './lib/api';
 
 interface NavLink {
   href: string;
@@ -48,20 +48,36 @@ const playLinks: NavLink[] = [
   { href: '/play', label: 'Play', accent: true },
 ];
 
-const adminLinks: NavLink[] = [
+const adminBaseLinks: NavLink[] = [
   { href: adminPath('events'), label: 'Events' },
   { href: adminPath('attendance'), label: 'Attendance Hub' },
   { href: adminPath('feedback'), label: 'Feedback Hub' },
+];
+const ownerAdminLinks: NavLink[] = [
   { href: adminPath('organizers'), label: 'Organizers' },
+  { href: adminPath('audit-log'), label: 'Audit Log' },
 ];
 
 const isAdminRoute = computed(() => isAdminPath(route.path));
+const adminSessionQuery = useQuery({
+  queryKey: queryKeys.adminSession,
+  queryFn: fetchAdminSession,
+  enabled: isAdminRoute,
+});
+const adminLinks = computed(() => {
+  const session = adminSessionQuery.data.value;
+  if (session?.authenticated && session.user?.role === 'owner') {
+    return [...adminBaseLinks, ...ownerAdminLinks];
+  }
+
+  return adminBaseLinks;
+});
 const adminEventId = computed(() => {
   const value = route.params.eventId;
   if (Array.isArray(value)) return value[0];
   return value || null;
 });
-const primaryLinks = computed(() => (isAdminRoute.value ? adminLinks : publicLinks));
+const primaryLinks = computed(() => (isAdminRoute.value ? adminLinks.value : publicLinks));
 const visiblePlayLinks = computed(() => (quizAvailable.value ? playLinks : []));
 const navGroups = computed(() => {
   if (isAdminRoute.value) {
@@ -154,6 +170,11 @@ const breadcrumbItems = computed(() => {
 
     if (path === adminPath('organizers')) {
       items.push({ label: 'Organizers' });
+      return items;
+    }
+
+    if (path === adminPath('audit-log')) {
+      items.push({ label: 'Audit Log' });
       return items;
     }
 

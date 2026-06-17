@@ -31,6 +31,7 @@ Use `.env.local` for local development. Do not commit real credentials.
 - `VITE_SHOW_FEEDBACK_BOT=false` hides only the floating launcher; `/feedback` remains directly reachable.
 - Route-feedback Turnstile can use a baked-in public sitekey, but `TURNSTILE_SECRET_KEY` must stay server-only on the Worker.
 - Hosted organizer auth requires `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`; `ADMIN_PASSWORD` is only a fallback when Supabase admin auth is not configured.
+- Luma event import uses public Luma event URLs and does not require a Luma API key. Supabase community events are required for saving imports.
 - Set `PUBLIC_FRONTEND_ORIGIN` on the Worker whenever the browser directly calls a different origin with `VITE_FORCE_API_BASE_URL=true`, otherwise credentialed API calls will be blocked by CORS.
 - Rotate any real key that appears in git history, logs, screenshots, or public issues.
 - Keep `.env.local` local and use deployment secret stores for hosted environments.

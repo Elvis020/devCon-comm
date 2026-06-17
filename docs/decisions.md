@@ -4,6 +4,16 @@
 
 ---
 
+## ADR-014: Read-Only Luma Event Import
+
+**Date:** 2026-06-17
+**Why:** Organizers already create DevCongress meetups in Luma, so the app should avoid duplicate manual entry while preserving Luma as the source of truth for registration. A read-only import from Luma into Supabase `community_events` gives the organizer console the event shell it needs for website publishing, checklists, talks, feedback, media, and attendance without trying to manage Luma itself.
+**Tradeoffs:** The import reads public Luma event pages instead of the Plus-only Luma API, so it can only import fields Luma exposes in page metadata. Supabase-backed events are still required because local JSON fallback cannot deduplicate external records safely. Imported data is a snapshot, so later Luma edits will not automatically appear until a refresh/sync feature is added.
+**Alternatives considered:** Creating Luma events from DevCon-Comm (rejected because organizers prefer Luma as the event-registration tool), requiring Luma Plus API keys (rejected because the project is not paying for Luma Plus), or full automatic sync/webhooks now (larger operational surface before the import mapping is proven).
+**Revisit when:** The import mapping is trusted and organizers ask for `Refresh from Luma`; start with manual diff-based refresh before considering webhooks or automatic sync.
+
+---
+
 ## ADR-013: Supabase Admin Auth With App-Owned Sessions
 
 **Date:** 2026-06-16

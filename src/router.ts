@@ -5,7 +5,9 @@ import FeedbackView from './views/FeedbackView.vue';
 import RouteFeedbackView from './views/RouteFeedbackView.vue';
 import AdminAttendanceOverviewView from './views/admin/AdminAttendanceOverviewView.vue';
 import AdminAttendanceView from './views/admin/AdminAttendanceView.vue';
+import AdminAuditLogView from './views/admin/AdminAuditLogView.vue';
 import AdminEventView from './views/admin/AdminEventView.vue';
+import AdminAuthCallbackView from './views/admin/AdminAuthCallbackView.vue';
 import AdminEventsView from './views/admin/AdminEventsView.vue';
 import AdminFeedbackOverviewView from './views/admin/AdminFeedbackOverviewView.vue';
 import AdminFeedbackView from './views/admin/AdminFeedbackView.vue';
@@ -17,6 +19,7 @@ import AdminTalksView from './views/admin/AdminTalksView.vue';
 import CfpView from './views/CfpView.vue';
 import DashboardView from './views/DashboardView.vue';
 import EventsView from './views/EventsView.vue';
+import EventView from './views/EventView.vue';
 import LeaderboardView from './views/LeaderboardView.vue';
 import MyTalksView from './views/MyTalksView.vue';
 import NotFoundView from './views/NotFoundView.vue';
@@ -33,6 +36,7 @@ export const router = createRouter({
   routes: [
     { path: '/', name: 'dashboard', component: DashboardView },
     { path: '/events', name: 'events', component: EventsView },
+    { path: '/events/:slug', name: 'event', component: EventView },
     { path: '/archive', name: 'archive', component: ArchiveView },
     { path: '/archive/:eventId', name: 'archive-event', component: ArchiveEventView },
     { path: '/leaderboard', name: 'leaderboard', component: LeaderboardView },
@@ -42,12 +46,14 @@ export const router = createRouter({
     { path: '/my-talks', name: 'my-talks', component: MyTalksView },
     { path: '/play', name: 'play', component: PlayView },
     { path: '/play/:code', name: 'play-code', component: PlayCodeView },
+    { path: adminPath('auth/callback'), name: 'admin-auth-callback', component: AdminAuthCallbackView },
     { path: adminPath('login'), name: 'admin-login', component: AdminLoginView },
     { path: adminPath(), redirect: adminPath('events') },
     { path: adminPath('events'), name: 'admin-events', component: AdminEventsView },
     { path: adminPath('attendance'), name: 'admin-attendance-overview', component: AdminAttendanceOverviewView },
     { path: adminPath('feedback'), name: 'admin-feedback-overview', component: AdminFeedbackOverviewView },
     { path: adminPath('organizers'), name: 'admin-organizers', component: AdminOrganizersView },
+    { path: adminPath('audit-log'), name: 'admin-audit-log', component: AdminAuditLogView },
     { path: adminPath('events/new'), name: 'admin-events-new', component: AdminEventsView },
     { path: adminPath('events/:eventId'), name: 'admin-event', component: AdminEventView },
     { path: adminPath('events/:eventId/talks'), name: 'admin-talks', component: AdminTalksView },
@@ -61,7 +67,7 @@ export const router = createRouter({
 });
 
 router.beforeEach(async (to, from) => {
-  if (!isAdminPath(to.path) || to.path === adminPath('login')) {
+  if (!isAdminPath(to.path) || to.path === adminPath('login') || to.path === adminPath('auth/callback')) {
     return true;
   }
 

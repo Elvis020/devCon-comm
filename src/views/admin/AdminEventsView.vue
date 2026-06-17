@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
-import { computed, reactive, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import ConfirmDialog from '@/src/components/ui/ConfirmDialog.vue';
 import AdminEventsPageSkeleton from '@/src/components/ui/page-skeletons/AdminEventsPageSkeleton.vue';
-import { fetchEvents, queryKeys } from '@/src/lib/api';
-import type { Event, EventStatus } from '@/types';
+import { deleteEventById, fetchEvents, importLumaEventUrl, previewLumaEventUrl, queryKeys, type LumaPreviewResponse } from '@/src/lib/api';
+import { notify } from '@/src/lib/notify';
+import type { Event as CommunityEvent, EventStatus } from '@/types';
 import { adminPath } from '@/src/admin-routes';
 
 const route = useRoute();
@@ -14,20 +16,14 @@ const eventsQuery = useQuery({
   queryKey: queryKeys.events,
   queryFn: fetchEvents,
 });
-const saving = ref(false);
-const error = ref<string | null>(null);
-const form = reactive({
-  name: '',
-  description: '',
-  event_date: '',
-  end_date: '',
-  slug: '',
-  cover: '',
-  registration_url: '',
-  location_name: 'Accra, Ghana',
-  location_url: '',
-  publish_to_website: true,
-});
+const lumaPreviewing = ref(false);
+const lumaImporting = ref(false);
+const lumaError = ref<string | null>(null);
+const lumaEventUrl = ref('');
+const lumaPreview = ref<LumaPreviewResponse | null>(null);
+const lumaPreviewUrl = ref('');
+const eventPendingDelete = ref<CommunityEvent | null>(null);
+const deletePending = ref(false);
 const page = ref(1);
 const pageSize = 6;
 const lifecycleStages: Array<{
@@ -90,45 +86,93 @@ const paginatedEvents = computed(() => events.value.slice((page.value - 1) * pag
 const pageStart = computed(() => (events.value.length === 0 ? 0 : (page.value - 1) * pageSize + 1));
 const pageEnd = computed(() => Math.min(events.value.length, page.value * pageSize));
 
-async function createNewEvent() {
-  saving.value = true;
-  error.value = null;
-  const locationName = form.location_name.trim();
-  const payload = {
-    name: form.name,
-    description: form.description,
-    event_date: form.event_date,
-    end_date: form.end_date || null,
-    slug: form.slug.trim() || null,
-    cover: form.cover.trim() || null,
-    registration_url: form.registration_url.trim() || null,
-    location: locationName
-      ? {
-        label: locationName,
-        name: locationName,
-        url: form.location_url.trim() || null,
-      }
-      : null,
-    publish_to_website: form.publish_to_website,
-  };
-  const response = await fetch('/api/events', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+async function handleLumaPreview() {
+  const url = lumaEventUrl.value.trim();
+  if (!url) {
+    lumaError.value = 'Paste a public Luma event URL first.';
+    return;
+  }
 
-  if (response.ok) {
-    const event = await response.json();
+  lumaPreviewing.value = true;
+  lumaError.value = null;
+  lumaPreview.value = null;
+
+  try {
+    lumaPreview.value = await previewLumaEventUrl(url);
+    lumaPreviewUrl.value = url;
+  } catch (previewError) {
+    lumaError.value = previewError instanceof Error ? previewError.message : 'Unable to preview Luma event.';
+    notify.error(lumaError.value);
+  } finally {
+    lumaPreviewing.value = false;
+  }
+}
+
+async function confirmLumaImport() {
+  const url = lumaPreviewUrl.value || lumaEventUrl.value.trim();
+  if (!url) return;
+
+  lumaImporting.value = true;
+  lumaError.value = null;
+
+  try {
+    const payload = await importLumaEventUrl(url);
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.events }),
       queryClient.invalidateQueries({ queryKey: queryKeys.overview }),
     ]);
-    await router.push(adminPath(`events/${event.id}`));
-  } else {
-    const data = await response.json();
-    error.value = data.error || 'Failed to create event';
+    notify.success(payload.already_imported ? 'Luma event was already imported.' : 'Imported Luma event.');
+    lumaEventUrl.value = '';
+    lumaPreviewUrl.value = '';
+    lumaPreview.value = null;
+    await router.push(adminPath(`events/${payload.event.id}`));
+  } catch (importError) {
+    lumaError.value = importError instanceof Error ? importError.message : 'Unable to import Luma event.';
+    notify.error(lumaError.value);
+  } finally {
+    lumaImporting.value = false;
   }
-  saving.value = false;
+}
+
+function clearLumaPreview() {
+  lumaPreview.value = null;
+  lumaPreviewUrl.value = '';
+}
+
+async function openExistingLumaEvent() {
+  if (!lumaPreview.value?.existing_event) return;
+  await router.push(adminPath(`events/${lumaPreview.value.existing_event.id}`));
+}
+
+function requestDeleteEvent(event: CommunityEvent) {
+  eventPendingDelete.value = event;
+}
+
+function cancelDeleteEvent() {
+  if (deletePending.value) return;
+  eventPendingDelete.value = null;
+}
+
+async function confirmDeleteEvent() {
+  if (!eventPendingDelete.value) return;
+
+  const event = eventPendingDelete.value;
+  deletePending.value = true;
+
+  try {
+    await deleteEventById(event.id);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.events }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.overview }),
+    ]);
+    notify.success('Event removed.');
+    eventPendingDelete.value = null;
+    if (page.value > pageCount.value) page.value = pageCount.value;
+  } catch (error) {
+    notify.error(error instanceof Error ? error.message : 'Unable to remove event.');
+  } finally {
+    deletePending.value = false;
+  }
 }
 
 function formatDate(value: string): string {
@@ -137,6 +181,14 @@ function formatDate(value: string): string {
 
 function formatEventMonth(value: string): string {
   return new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' }).format(new Date(value));
+}
+
+function isQuarterlyEvent(event: CommunityEvent): boolean {
+  return /quarterly/i.test(event.name);
+}
+
+function eventKindLabel(event: CommunityEvent): string {
+  return isQuarterlyEvent(event) ? 'Quarterly' : 'Monthly';
 }
 
 function statusMeta(status: string) {
@@ -152,7 +204,7 @@ function statusActionLabel(status: string): string {
   return statusMeta(status).actionLabel;
 }
 
-function statusActionPath(event: Event): string {
+function statusActionPath(event: CommunityEvent): string {
   const subsectionByStatus: Record<EventStatus, string> = {
     draft: 'speakers',
     cfp_open: 'speakers',
@@ -174,63 +226,122 @@ function goToPage(nextPage: number) {
   <div class="editorial-page">
     <div class="editorial-wrap">
       <template v-if="creating">
-        <div class="editorial-header">
-          <p class="editorial-eyebrow">organizer</p>
-          <h1 class="editorial-title">Create New Event</h1>
+        <div class="editorial-header flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p class="editorial-eyebrow">organizer</p>
+            <h1 class="editorial-title">Create New Event</h1>
+            <p class="editorial-subtitle">Import from Luma now, or keep the manual form shape visible while it is being finished.</p>
+          </div>
         </div>
-        <form class="editorial-panel relative space-y-5 overflow-hidden p-6" @submit.prevent="createNewEvent">
-          <div class="absolute right-0 top-0 size-16 border-b-2 border-l-2 border-dc-yellow/20" />
-          <div v-if="error" class="rounded-md border-2 border-red-500 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{{ error }}</div>
-          <div>
-            <label class="editorial-label">Name</label>
-            <input v-model="form.name" required class="editorial-input font-mono" />
+
+        <section class="editorial-panel mb-6 overflow-hidden">
+          <div class="border-b-2 border-dc-ink bg-dc-paper-warm px-5 py-4">
+            <p class="editorial-eyebrow">active path</p>
+            <h2 class="mt-1 text-2xl font-black tracking-tight text-dc-ink">Import from Luma Event</h2>
+            <p class="mt-1 max-w-2xl text-sm leading-6 text-dc-gray">Paste the public Luma event URL and we will pull in the event shell from the details Luma exposes.</p>
           </div>
-          <div>
-            <label class="editorial-label">Date</label>
-            <input v-model="form.event_date" required type="date" class="editorial-input font-mono" />
+          <form class="space-y-4 p-5" @submit.prevent="handleLumaPreview">
+            <div v-if="lumaError" class="rounded-md border-2 border-red-500 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{{ lumaError }}</div>
+            <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+              <div>
+                <label class="editorial-label">Public Luma event URL</label>
+                <input
+                  v-model="lumaEventUrl"
+                  type="url"
+                  required
+                  class="editorial-input font-mono"
+                  placeholder="https://luma.com/..."
+                  :disabled="lumaPreviewing || lumaImporting"
+                />
+              </div>
+              <button type="submit" class="editorial-action min-h-[54px] justify-center disabled:cursor-not-allowed disabled:opacity-60" :disabled="lumaPreviewing || lumaImporting">
+                {{ lumaPreviewing ? 'PREVIEWING...' : 'PREVIEW EVENT' }}
+              </button>
+            </div>
+            <p class="text-sm leading-6 text-dc-gray">Preview the title, date, location, cover, description, and registration link before adding it to the event list.</p>
+
+            <section v-if="lumaPreview" class="rounded-md border border-dc-border bg-dc-paper-warm p-4">
+              <p class="editorial-eyebrow mb-2">preview</p>
+              <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+                <div class="min-w-0">
+                  <h3 class="text-2xl font-black leading-tight text-dc-ink">{{ lumaPreview.preview.name }}</h3>
+                  <p class="mt-2 font-mono text-sm font-bold uppercase text-dc-gray">{{ formatDate(lumaPreview.preview.event_date) }}</p>
+                  <p class="mt-2 text-sm leading-6 text-dc-gray">{{ lumaPreview.preview.location?.label ?? lumaPreview.preview.location?.name ?? 'Location not provided' }}</p>
+                  <p v-if="lumaPreview.preview.description" class="mt-3 line-clamp-3 text-sm leading-6 text-dc-gray">{{ lumaPreview.preview.description }}</p>
+                  <a
+                    v-if="lumaPreview.preview.registration_url"
+                    :href="lumaPreview.preview.registration_url"
+                    target="_blank"
+                    rel="noreferrer"
+                    class="mt-3 inline-flex font-mono text-xs font-bold uppercase text-dc-pink underline decoration-dc-yellow decoration-2 underline-offset-4"
+                  >
+                    View Luma page
+                  </a>
+                  <p v-if="lumaPreview.already_imported" class="mt-3 text-sm font-semibold text-dc-gray">This Luma event already exists in the event list.</p>
+                </div>
+                <div class="flex flex-col gap-2 sm:flex-row lg:flex-col">
+                  <button
+                    v-if="lumaPreview.already_imported"
+                    type="button"
+                    class="editorial-action min-h-12 justify-center"
+                    @click="openExistingLumaEvent"
+                  >
+                    OPEN EVENT
+                  </button>
+                  <button
+                    v-else
+                    type="button"
+                    class="editorial-action min-h-12 justify-center disabled:cursor-not-allowed disabled:opacity-60"
+                    :disabled="lumaImporting"
+                    @click="confirmLumaImport"
+                  >
+                    {{ lumaImporting ? 'IMPORTING...' : 'IMPORT EVENT' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-md border-2 border-dc-ink bg-white px-4 py-3 font-mono text-xs font-bold uppercase tracking-wide text-dc-ink"
+                    :disabled="lumaImporting"
+                    @click="clearLumaPreview"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+            </section>
+          </form>
+        </section>
+
+        <section class="editorial-panel relative overflow-hidden p-5 sm:p-6">
+          <div class="absolute -left-12 top-7 z-10 w-48 -rotate-45 border-y-2 border-dc-ink bg-dc-yellow py-1 text-center font-mono text-[11px] font-black uppercase tracking-wide text-dc-ink shadow-[0_2px_0_#111111]">
+            Coming soon
           </div>
-          <div>
-            <label class="editorial-label">End date</label>
-            <input v-model="form.end_date" type="date" class="editorial-input font-mono" />
+          <div class="pl-16 sm:pl-20">
+            <p class="editorial-eyebrow">manual path</p>
+            <h2 class="mt-1 text-2xl font-black tracking-tight text-dc-ink">Event Form</h2>
+            <p class="mt-1 text-sm leading-6 text-dc-gray">This manual setup flow is visible for shape and review, but disabled while Luma import is the supported event creation path.</p>
           </div>
-          <div>
-            <label class="editorial-label">Description</label>
-            <textarea v-model="form.description" rows="4" class="editorial-input font-mono" />
-          </div>
-          <div class="grid gap-5 md:grid-cols-2">
-            <div>
-              <label class="editorial-label">Website slug</label>
-              <input v-model="form.slug" class="editorial-input font-mono" placeholder="devcon-comm-august-2026" />
+          <div class="mt-5 grid gap-3 opacity-50 md:grid-cols-4">
+            <div class="md:col-span-2">
+              <label class="editorial-label">Name <span class="text-red-600">*</span></label>
+              <div class="h-12 rounded-md border-2 border-dc-ink bg-white" />
             </div>
             <div>
-              <label class="editorial-label">Cover image path</label>
-              <input v-model="form.cover" class="editorial-input font-mono" placeholder="/images/apr-meetup.jpg" />
+              <label class="editorial-label">Date <span class="text-red-600">*</span></label>
+              <div class="h-12 rounded-md border-2 border-dc-ink bg-white" />
             </div>
             <div>
               <label class="editorial-label">Location</label>
-              <input v-model="form.location_name" class="editorial-input font-mono" />
+              <div class="h-12 rounded-md border-2 border-dc-ink bg-white" />
             </div>
-            <div>
-              <label class="editorial-label">Location URL</label>
-              <input v-model="form.location_url" class="editorial-input font-mono" placeholder="https://maps.google.com/..." />
+            <div class="md:col-span-3">
+              <label class="editorial-label">Description</label>
+              <div class="h-12 rounded-md border-2 border-dc-ink bg-white" />
             </div>
-            <div class="md:col-span-2">
-              <label class="editorial-label">Registration URL</label>
-              <input v-model="form.registration_url" class="editorial-input font-mono" placeholder="https://lu.ma/..." />
+            <div class="flex items-end">
+              <button type="button" disabled class="editorial-action min-h-12 w-full justify-center disabled:cursor-not-allowed disabled:opacity-50">CREATE EVENT</button>
             </div>
           </div>
-          <label class="flex items-start gap-3 rounded-lg border border-dc-border bg-dc-paper-warm px-4 py-3">
-            <input v-model="form.publish_to_website" type="checkbox" class="mt-1 size-4 accent-dc-yellow" />
-            <span>
-              <span class="block font-mono text-xs font-bold uppercase text-dc-ink">Publish through website API</span>
-              <span class="mt-1 block text-sm leading-5 text-dc-gray">Include this event in <code>/api/public/meetups</code> once Supabase is the source of truth.</span>
-            </span>
-          </label>
-          <div class="flex gap-3">
-            <button type="submit" :disabled="saving" class="editorial-action disabled:opacity-60">{{ saving ? 'CREATING...' : 'CREATE EVENT' }}</button>
-            <RouterLink :to="adminPath('events')" class="editorial-secondary-action">CANCEL</RouterLink>
-          </div>
-        </form>
+        </section>
       </template>
 
       <template v-else>
@@ -282,8 +393,16 @@ function goToPage(nextPage: number) {
                 <div v-for="event in paginatedEvents" :key="event.id" class="ops-row event-list-grid min-h-[64px]">
                   <div class="flex min-w-0 items-center">
                     <div class="min-w-0">
-                      <div class="event-list-title">{{ formatEventMonth(event.event_date) }}</div>
-                      <div class="event-list-meta">DevCon-Comm meetup</div>
+                      <div class="flex min-w-0 flex-wrap items-center gap-2">
+                        <div class="event-list-title">{{ formatEventMonth(event.event_date) }}</div>
+                        <span
+                          class="rounded-sm border px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide"
+                          :class="isQuarterlyEvent(event) ? 'border-dc-pink text-dc-pink' : 'border-dc-border text-dc-gray'"
+                        >
+                          {{ eventKindLabel(event) }}
+                        </span>
+                      </div>
+                      <div class="event-list-meta">{{ event.name }}</div>
                     </div>
                   </div>
                   <div class="event-list-date">{{ formatDate(event.event_date) }}</div>
@@ -301,8 +420,15 @@ function goToPage(nextPage: number) {
                     </div>
                     <span class="event-list-status-label">{{ statusMeta(event.status).label }}</span>
                   </div>
-                  <div class="flex items-center justify-end">
+                  <div class="flex items-center justify-end gap-4">
                     <RouterLink :to="statusActionPath(event)" class="font-mono text-sm font-bold uppercase text-dc-ink underline decoration-dc-yellow decoration-2 underline-offset-4 hover:text-dc-pink">{{ statusActionLabel(event.status) }} &rarr;</RouterLink>
+                    <button
+                      type="button"
+                      class="font-mono text-xs font-bold uppercase text-dc-gray hover:text-red-600"
+                      @click="requestDeleteEvent(event)"
+                    >
+                      Remove
+                    </button>
                   </div>
                 </div>
               </div>
@@ -338,5 +464,16 @@ function goToPage(nextPage: number) {
         </template>
       </template>
     </div>
+    <ConfirmDialog
+      :open="Boolean(eventPendingDelete)"
+      title="Remove event?"
+      :message="eventPendingDelete ? `This removes ${formatEventMonth(eventPendingDelete.event_date)} from the organizer event list for now.` : ''"
+      confirm-label="Remove event"
+      cancel-label="Keep event"
+      danger
+      :busy="deletePending"
+      @cancel="cancelDeleteEvent"
+      @confirm="confirmDeleteEvent"
+    />
   </div>
 </template>
