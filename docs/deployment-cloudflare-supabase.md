@@ -138,11 +138,12 @@ npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 npx wrangler secret put ADMIN_PASSWORD
 npx wrangler secret put ADMIN_SESSION_SECRET
 npx wrangler secret put VITE_SUPABASE_URL
-npx wrangler secret put PUBLIC_APP_URL
-npx wrangler secret put PUBLIC_FRONTEND_ORIGIN
+npx wrangler secret put VITE_SUPABASE_ANON_KEY
 ```
 
-Use the service-role key only on the Worker. Do not add `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_PASSWORD`, or `ADMIN_SESSION_SECRET` to Cloudflare Pages environment variables.
+Use the service-role key only on the Worker. Do not add `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_PASSWORD`, or `ADMIN_SESSION_SECRET` to Cloudflare Pages environment variables. Keep public Worker origins such as `PUBLIC_APP_URL` and `PUBLIC_FRONTEND_ORIGIN` in `wrangler.toml` so deploys do not remove dashboard-only variables.
+
+For organizer Google sign-in, also configure the Supabase Google provider and add both the Pages production origin and local Vite origin to the Google OAuth client. The Google Authorized redirect URI should be the Supabase callback URI shown in the provider settings, while the post-auth app redirect continues through `/api/auth/admin/callback`.
 
 For the first Pages deploy, keep browser API calls on the Pages hostname and let the committed `public/_worker.js` Pages advanced-mode worker proxy `/api/*` to the API Worker. This preserves the same-origin cookie contract for organizer auth while still serving the API from Workers. Keep `PUBLIC_FRONTEND_ORIGIN` on the Worker for defensive CORS coverage, but do not enable `VITE_FORCE_API_BASE_URL` for normal organizer testing. Use `VITE_FORCE_API_BASE_URL=true` only for explicit split-origin smoke tests where cookie auth is not being exercised.
 

@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Context } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
-import { adminOtpRetryMessage, evaluateAdminOtpRateLimit, recordAdminOtpRequest } from '@/lib/admin-auth-rate-limit';
 import { envValue } from '@/server/env';
 import { getSupabaseAdminClient, isSupabaseServerConfigured } from '@/lib/supabase/server';
 import type { Database, Json } from '@/types/supabase';
@@ -29,7 +28,6 @@ export interface AnonymousAdminSession {
 export type AdminSessionResult = AdminSession | AnonymousAdminSession;
 
 type BrowserSafeSupabaseClient = ReturnType<typeof createClient<Database, 'public'>>;
-
 let browserSafeClient: BrowserSafeSupabaseClient | null = null;
 
 function adminPassword(c: Context): string {
@@ -109,14 +107,6 @@ function getBrowserSafeSupabaseClient(c: Context): BrowserSafeSupabaseClient {
   return browserSafeClient;
 }
 
-function originForRequest(c: Context): string {
-  const explicitAppUrl = envValue('PUBLIC_APP_URL', c);
-  if (explicitAppUrl) return new URL(explicitAppUrl).origin;
-
-  const requestUrl = new URL(c.req.url);
-  return requestUrl.origin;
-}
-
 function adminEventsPath(c: Context): string {
   const basePath = `/${(envValue('VITE_ADMIN_BASE_PATH', c) ?? 'organizer-console').replace(/^\/+|\/+$/g, '')}`;
   return `${basePath}/events`;
@@ -127,27 +117,12 @@ function adminLoginPath(c: Context): string {
   return `${basePath}/login`;
 }
 
-function adminAuthCallbackPath(c: Context): string {
-  const basePath = `/${(envValue('VITE_ADMIN_BASE_PATH', c) ?? 'organizer-console').replace(/^\/+|\/+$/g, '')}`;
-  return `${basePath}/auth/callback`;
-}
-
 export function defaultAdminRedirectPath(c: Context): string {
   return adminEventsPath(c);
 }
 
 export function adminLoginErrorPath(c: Context, error: string): string {
   return `${adminLoginPath(c)}?error=${encodeURIComponent(error)}`;
-}
-
-function adminLoginRedirectPath(c: Context, next: string): string {
-  return `${adminLoginPath(c)}?next=${encodeURIComponent(next)}`;
-}
-
-function safeRedirectPath(c: Context, value: unknown): string {
-  const path = typeof value === 'string' ? value.trim() : '';
-  if (!path || !path.startsWith('/') || path.startsWith('//')) return defaultAdminRedirectPath(c);
-  return path;
 }
 
 function bytesToHex(bytes: ArrayBuffer): string {
@@ -233,76 +208,18 @@ async function createAdminSessionForUser(c: Context, input: { userId: string; em
   return { ok: true as const };
 }
 
-export async function startSupabaseAdminOtp(c: Context, input: { email: unknown; redirectTo?: unknown }) {
-  const email = normalizeEmail(input.email);
-  if (!email || !email.includes('@')) {
-    return { ok: false as const, status: 400, error: 'Enter a valid organizer email.' };
-  }
-
-  const ip = requestIp(c);
-  const rateLimit = evaluateAdminOtpRateLimit({ email, ip });
-  if (!rateLimit.allowed) {
-    return {
-      ok: false as const,
-      status: 429,
-      error: adminOtpRetryMessage(rateLimit.retryAfterMs),
-      retryAfterMs: rateLimit.retryAfterMs,
-    };
-  }
-
-  const membership = await findActiveMembershipByEmail(c, email);
-
-  const origin = originForRequest(c);
-  const next = safeRedirectPath(c, input.redirectTo);
-  const redirectUrl = new URL(`${adminAuthCallbackPath(c)}?next=${encodeURIComponent(next)}`, origin);
-  if (membership) {
-    const { error } = await getBrowserSafeSupabaseClient(c).auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: redirectUrl.toString(),
-        shouldCreateUser: true,
-      },
-    });
-
-    if (error) {
-      return { ok: false as const, status: 500, error: 'Unable to send organizer sign-in link.' };
-    }
-  }
-
-  recordAdminOtpRequest({ email, ip });
-
-  return {
-    ok: true as const,
-    retryAfterMs: rateLimit.retryAfterMs,
-    message: 'If this email is allowed, a secure organizer sign-in link has been sent.',
-  };
-}
-
 export async function completeSupabaseAdminCallback(c: Context, code: string) {
   const supabase = getBrowserSafeSupabaseClient(c);
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error || !data.user?.email) {
-    return { ok: false as const, status: 401, error: 'Organizer sign-in link is invalid or expired.' };
+    return { ok: false as const, status: 401, error: 'Google organizer sign-in could not be completed. Please try again.' };
   }
 
   const email = normalizeEmail(data.user.email);
   const result = await createAdminSessionForUser(c, { userId: data.user.id, email });
   await supabase.auth.signOut();
   return result;
-}
-
-export async function completeSupabaseAdminToken(c: Context, accessToken: string) {
-  const { data, error } = await getBrowserSafeSupabaseClient(c).auth.getUser(accessToken);
-
-  if (error || !data.user?.email) {
-    return { ok: false as const, status: 401, error: 'Organizer sign-in link is invalid or expired.' };
-  }
-
-  return createAdminSessionForUser(c, {
-    userId: data.user.id,
-    email: data.user.email,
-  });
 }
 
 export function startLocalAdminSession(c: Context, password: unknown): boolean {

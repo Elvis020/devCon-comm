@@ -27,8 +27,8 @@ The public header's Organizer button can be hidden with `VITE_SHOW_ORGANIZER_LIN
 
 | Route | Purpose |
 |---|---|
-| `/organizer-console/login` | Organizer sign-in, using Supabase email OTP when configured or local password fallback otherwise |
-| `/organizer-console/auth/callback` | Dedicated Supabase organizer magic-link return route that finishes sign-in before entering the console |
+| `/organizer-console/login` | Organizer sign-in, using Supabase Google OAuth when configured or local password fallback otherwise |
+| `/organizer-console/auth/callback` | Legacy organizer auth landing page that redirects back to Google sign-in if a stale magic-link route is hit |
 | `/organizer-console/events` | Organizer event list |
 | `/organizer-console/organizers` | Owner-only organizer email allowlist |
 | `/organizer-console/audit-log` | Owner-only organizer mutation and sign-in audit ledger |
@@ -53,7 +53,7 @@ The public header's Organizer button can be hidden with `VITE_SHOW_ORGANIZER_LIN
 | `/api/integrations/luma*` | Organizer-only Luma event preview and confirmed import |
 | `/api/quiz*` | Quiz sessions, questions, explicit state advancement, join/play/host state |
 | `/api/public/meetups*` | Read-only website integration API |
-| `/api/auth/*` | Organizer session, Supabase email OTP login, token exchange/callback, and logout |
+| `/api/auth/*` | Organizer session, local password fallback login, Google OAuth callback, and logout |
 | `/api/admin/organizers*` | Owner-only organizer email allowlist management |
 | `/api/admin/audit-log` | Owner-only audit log read API |
 | `/api/health/*` | Local and Supabase readiness checks |

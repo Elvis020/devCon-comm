@@ -1,52 +1,19 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { adminPath } from '@/src/admin-routes';
-import { ADMIN_LOGIN_COOLDOWN_STORAGE_KEY, readAdminAuthResponsePayload } from '@/src/lib/admin-auth-client';
+import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 import { fetchAdminSession } from '@/src/lib/api';
 import { notify } from '@/src/lib/notify';
 
 const route = useRoute();
 const router = useRouter();
-const email = ref('');
 const password = ref('');
 const authMode = ref<'supabase' | 'local'>('supabase');
 const loading = ref(false);
 const error = ref<string | null>(null);
 const redirectTo = computed(() => String(route.query.redirect ?? route.query.next ?? adminPath('events')));
-const cooldownUntil = ref(0);
-const nowMs = ref(Date.now());
-let cooldownTimer: number | undefined;
 const ADMIN_LOGIN_TOAST_ID = 'admin-login-toast';
-
-const cooldownRemainingMs = computed(() => Math.max(0, cooldownUntil.value - nowMs.value));
-const cooldownRemainingSeconds = computed(() => Math.ceil(cooldownRemainingMs.value / 1000));
-const resendDisabled = computed(() => authMode.value === 'supabase' && cooldownRemainingMs.value > 0);
-const formInputDisabled = computed(() => loading.value || resendDisabled.value);
-
-function startCooldown(retryAfterMs: number) {
-  cooldownUntil.value = Date.now() + retryAfterMs;
-  nowMs.value = Date.now();
-  window.localStorage.setItem(ADMIN_LOGIN_COOLDOWN_STORAGE_KEY, String(cooldownUntil.value));
-  if (document.activeElement instanceof HTMLElement) {
-    document.activeElement.blur();
-  }
-
-  if (cooldownTimer !== undefined) {
-    window.clearInterval(cooldownTimer);
-  }
-
-  cooldownTimer = window.setInterval(() => {
-    nowMs.value = Date.now();
-    if (Date.now() >= cooldownUntil.value) {
-      if (cooldownTimer !== undefined) {
-        window.clearInterval(cooldownTimer);
-        cooldownTimer = undefined;
-      }
-      window.localStorage.removeItem(ADMIN_LOGIN_COOLDOWN_STORAGE_KEY);
-    }
-  }, 1000);
-}
 
 function notifyAdminLogin(kind: 'success' | 'info' | 'error', message: string, duration: number) {
   notify[kind](message, {
@@ -56,47 +23,46 @@ function notifyAdminLogin(kind: 'success' | 'info' | 'error', message: string, d
 }
 
 async function login() {
-  if (resendDisabled.value) {
-    notifyAdminLogin(
-      'info',
-      `Please wait about ${cooldownRemainingSeconds.value} second${cooldownRemainingSeconds.value === 1 ? '' : 's'} before sending another sign-in link.`,
-      5000,
-    );
-    return;
-  }
-
   loading.value = true;
   error.value = null;
 
   try {
+    if (authMode.value === 'supabase') {
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) {
+        notifyAdminLogin('error', 'Google organizer sign-in is not configured yet.', 7000);
+        return;
+      }
+
+      const callbackUrl = new URL('/api/auth/admin/callback', window.location.origin);
+      callbackUrl.searchParams.set('next', redirectTo.value);
+
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: callbackUrl.toString(),
+          scopes: 'email profile',
+          queryParams: {
+            prompt: 'select_account',
+          },
+        },
+      });
+
+      if (oauthError) {
+        notifyAdminLogin('error', 'Unable to start Google sign-in. Please try again.', 7000);
+      }
+      return;
+    }
+
     const response = await fetch('/api/auth/admin/login', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(authMode.value === 'supabase'
-        ? { email: email.value, redirect_to: redirectTo.value }
-        : { password: password.value }),
+      body: JSON.stringify({ password: password.value }),
     });
 
     if (!response.ok) {
-      const { message, retryAfterMs } = await readAdminAuthResponsePayload(response);
-      if (retryAfterMs) {
-        startCooldown(retryAfterMs);
-      }
-      notifyAdminLogin('error', message, 7000);
-      return;
-    }
-
-    if (authMode.value === 'supabase') {
-      const payload = await response.json() as { retry_after_ms?: number; message?: string };
-      if (typeof payload.retry_after_ms === 'number') {
-        startCooldown(payload.retry_after_ms);
-      }
-      notifyAdminLogin(
-        'success',
-        payload.message ?? 'If this email is allowed, a secure organizer sign-in link has been sent.',
-        9000,
-      );
+      notifyAdminLogin('error', 'Invalid admin password', 7000);
       return;
     }
 
@@ -109,15 +75,6 @@ async function login() {
 }
 
 onMounted(async () => {
-  const storedCooldownUntil = Number(window.localStorage.getItem(ADMIN_LOGIN_COOLDOWN_STORAGE_KEY) ?? '0');
-  if (Number.isFinite(storedCooldownUntil) && storedCooldownUntil > Date.now()) {
-    cooldownUntil.value = storedCooldownUntil;
-    nowMs.value = Date.now();
-    startCooldown(storedCooldownUntil - Date.now());
-  } else {
-    window.localStorage.removeItem(ADMIN_LOGIN_COOLDOWN_STORAGE_KEY);
-  }
-
   const callbackError = route.query.error;
   if (typeof callbackError === 'string' && callbackError) {
     error.value = callbackError;
@@ -133,12 +90,6 @@ onMounted(async () => {
     authMode.value = 'local';
   }
 });
-
-onUnmounted(() => {
-  if (cooldownTimer !== undefined) {
-    window.clearInterval(cooldownTimer);
-  }
-});
 </script>
 
 <template>
@@ -148,24 +99,10 @@ onUnmounted(() => {
         <p class="editorial-eyebrow">organizer access</p>
         <h1 class="admin-login-title mt-3 text-4xl font-black tracking-tight text-dc-ink">Admin Sign In</h1>
         <p class="admin-login-copy mt-3 text-sm leading-6 text-dc-gray">
-          {{ authMode === 'supabase' ? 'Use your organizer email to receive a secure sign-in link.' : 'Use the local admin password to manage events, talks, speakers, attendance, and feedback.' }}
+          {{ authMode === 'supabase' ? 'Use your approved Google account to open the organizer console.' : 'Use the local admin password to manage events, talks, speakers, attendance, and feedback.' }}
         </p>
 
-        <label v-if="authMode === 'supabase'" class="mt-8 block">
-          <span class="editorial-label">Organizer email</span>
-          <input
-            v-model="email"
-            autofocus
-            required
-            class="editorial-input mt-2"
-            :disabled="formInputDisabled"
-            type="email"
-            autocomplete="email"
-            placeholder="organizer@devcongress.org"
-          >
-        </label>
-
-        <label v-else class="mt-8 block">
+        <label v-if="authMode === 'local'" class="mt-8 block">
           <span class="editorial-label">Password</span>
           <input
             v-model="password"
@@ -183,15 +120,13 @@ onUnmounted(() => {
           {{ error }}
         </div>
 
-        <button type="submit" :disabled="loading || resendDisabled" class="admin-login-submit editorial-action mt-6 w-full justify-center disabled:opacity-60">
+        <button type="submit" :disabled="loading" class="admin-login-submit editorial-action mt-6 w-full justify-center disabled:opacity-60">
           {{
             loading
               ? 'Signing in...'
-              : authMode === 'supabase' && resendDisabled
-                ? `Send again in ${cooldownRemainingSeconds}s`
-                : authMode === 'supabase'
-                  ? 'Send Sign-In Link'
-                  : 'Sign In'
+              : authMode === 'supabase'
+                ? 'Continue With Google'
+                : 'Sign In'
           }}
         </button>
       </form>

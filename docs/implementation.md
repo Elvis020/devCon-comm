@@ -108,7 +108,7 @@
   - `/api/health`
   - `/api/health/supabase`
   - `/api/public/meetups`, `/api/public/meetups/[slug]`, `/api/public/meetups/[slug]/talks`
-  - `/api/auth/session`, `/api/auth/admin/login`, `/api/auth/admin/exchange`, `/api/auth/admin/callback`, `/api/auth/logout`
+  - `/api/auth/session`, `/api/auth/admin/login`, `/api/auth/admin/callback`, `/api/auth/logout`
   - `/api/admin/organizers`, `/api/admin/audit-log`
   - `/api/overview`
   - `/api/attendance/monthly`
@@ -120,7 +120,7 @@
 - **Public website contract:** `/api/public/meetups*` reads Supabase `community_events` first, then falls back to current `Event` + published `Talk` JSON data. It returns a DevCongress.org-friendly meetup DTO with `slug`, `start`, `end`, `cover`, `location`, `speakers`, `schedule`, `photos`, counts, and app route URLs. These endpoints are read-only, CORS-enabled, and cacheable for short-lived website consumption.
 - **Public website verification:** `pnpm verify:public-api` validates the public meetup response shape against the current `devcongress.org` Astro meetup schema expectations, plus CORS headers, cache headers, detail lookup, and talks lookup against `PUBLIC_API_BASE_URL` before the Astro website is wired to consume it.
 - **Public events page:** `/events` consumes `/api/public/meetups` inside this app so organizers can inspect the same public event stream the website will later consume.
-- **Auth note:** Hosted admin routes use Supabase email OTP plus app-owned HTTP-only sessions stored in `admin_sessions`; owner-only organizer email management lives at `/organizer-console/organizers`, and owner-only audit review lives at `/organizer-console/audit-log`. Local development falls back to `ADMIN_PASSWORD` only when Supabase admin auth is not configured.
+- **Auth note:** Hosted admin routes use Supabase Google OAuth plus app-owned HTTP-only sessions stored in `admin_sessions`; owner-only organizer email management lives at `/organizer-console/organizers`, and owner-only audit review lives at `/organizer-console/audit-log`. Local development falls back to `ADMIN_PASSWORD` only when Supabase admin auth is not configured.
 
 ### Vue App (`src/`)
 

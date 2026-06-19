@@ -1,16 +1,16 @@
 # Admin Auth
 
-DevCon-Comm uses Supabase Auth for hosted organizer access and keeps a local shared-password fallback for development environments without Supabase auth configured.
+DevCon-Comm uses Supabase Auth with Google OAuth for hosted organizer access and keeps a local shared-password fallback for development environments without Supabase auth configured.
 
 ## Production Flow
 
 1. An owner adds an organizer email in `/organizer-console/organizers`.
 2. The email is stored in `public.admin_memberships` with role `owner` or `organizer`.
 3. The organizer signs in from `/organizer-console/login`.
-4. The server checks the email against active `admin_memberships`, then asks Supabase Auth to send an email OTP magic link.
-5. Supabase redirects back to `/organizer-console/auth/callback` with its verified sign-in fragment.
-6. The callback page immediately posts the access token to `/api/auth/admin/exchange`, then clears the fragment from the URL and redirects into the organizer console.
-7. Hono verifies the token with Supabase, checks the membership again, stores an app-owned row in `admin_sessions`, and sets the `devcon_admin` HTTP-only cookie.
+4. The organizer chooses Google sign-in from `/organizer-console/login`.
+5. Supabase handles the Google OAuth redirect and returns to `/api/auth/admin/callback` with an authorization code.
+6. Hono exchanges the code with Supabase, checks the verified email against active `admin_memberships`, stores an app-owned row in `admin_sessions`, and sets the `devcon_admin` HTTP-only cookie.
+7. The callback route redirects into the organizer console.
 8. Organizer APIs call `requireAdmin`, which validates the session cookie, active membership, role, and request origin.
 
 The browser does not persist Supabase access or refresh tokens. The app cookie contains only an opaque random session token; the hashed token is stored in Supabase.
@@ -34,7 +34,7 @@ The browser does not persist Supabase access or refresh tokens. The app cookie c
 
 Owners can review recent admin activity at `/organizer-console/audit-log`. The ledger is backed by `public.admin_audit_log` and records successful organizer mutations such as login/logout, organizer allowlist changes, Luma imports, event and checklist edits, media uploads, feedback status changes, attendance CSV import/removal, speaker access changes, talk review actions, and quiz builder changes.
 
-Audit metadata should stay small and non-sensitive. Store identifiers, counts, statuses, and changed field names rather than raw CSV contents, feedback text, magic links, or full request bodies.
+Audit metadata should stay small and non-sensitive. Store identifiers, counts, statuses, and changed field names rather than raw CSV contents, feedback text, OAuth provider tokens, or full request bodies.
 
 ## Bootstrap
 
@@ -51,16 +51,19 @@ on conflict (email) do update set
 
 After that owner signs in, they can add more organizer emails from the console.
 
-## Email Templates
+## Google Provider Setup
 
-Supabase sends the first-time organizer email through the `Confirm sign up` template and later sign-ins through the `Magic Link` template. Use the branded templates in `supabase/templates/` so organizer emails look like DevCongress instead of the Supabase default.
+Configure Google in Supabase Dashboard → Authentication → Sign In / Providers and Google Cloud Console before the first hosted organizer sign-in.
 
-| Supabase template | Subject | Repo template |
-|---|---|---|
-| Confirm sign up | `Confirm your DevCongress organizer access` | `supabase/templates/admin-confirmation.html` |
-| Magic Link | `Your DevCongress organizer sign-in link` | `supabase/templates/admin-magic-link.html` |
+Required setup:
 
-Paste the HTML into Supabase Dashboard → Authentication → Email Templates. The templates use `{{ .ConfirmationURL }}` for the secure sign-in link and `{{ .SiteURL }}/brand/dev-con-logo.png` for the logo, so keep the Supabase Site URL pointed at the deployed app origin.
+1. In Google Cloud, create a Web OAuth client.
+2. Add your app origins to Authorized JavaScript origins, for example `https://devcon-comm.pages.dev` and `http://localhost:5173`.
+3. Add the Supabase-hosted callback URI shown on the Google provider page to Authorized redirect URIs.
+4. Paste the Google client id and client secret into the Supabase Google provider settings.
+5. Keep Supabase Site URL pointed at the deployed app origin so post-auth redirects return to the organizer surface.
+
+Organizer access still depends on `admin_memberships`. A successful Google login does not grant organizer permissions unless the verified email is active in the allowlist.
 
 ## Local Fallback
 
@@ -71,7 +74,7 @@ ADMIN_PASSWORD=devcon-admin
 ADMIN_SESSION_SECRET=replace-this-locally
 ```
 
-This fallback is for local development only. Hosted environments should configure `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` so email-based admin auth is used.
+This fallback is for local development only. Hosted environments should configure `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` so Google-based organizer auth is used.
 
 ## Security Notes
 

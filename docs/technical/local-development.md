@@ -48,7 +48,7 @@ The seed script resets JSON mock data under `data/`. Use it when you want a know
 
 ## Organizer Login
 
-Hosted organizer routes use Supabase email OTP and app-owned HTTP-only sessions. In local development, if Supabase admin auth is not configured, the login screen falls back to a shared password. Set these values in `.env.local` if you do not want defaults:
+Hosted organizer routes use Supabase Google OAuth and app-owned HTTP-only sessions. In local development, if Supabase admin auth is not configured, the login screen falls back to a shared password. Set these values in `.env.local` if you do not want defaults:
 
 ```bash
 VITE_SHOW_ORGANIZER_LINK=true

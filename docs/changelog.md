@@ -5,6 +5,20 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 
 ---
 
+## 2026-06-19 — Organizer Google sign-in
+
+- Replaced hosted organizer magic-link sign-in with Supabase Google OAuth while keeping the existing app-owned `admin_sessions` cookie model and `admin_memberships` allowlist.
+- Changed the organizer login screen to launch Google directly and disabled the hosted `/api/auth/admin/login` magic-link path, while preserving the local shared-password fallback for non-Supabase environments.
+- Moved the hosted organizer callback completion fully onto `/api/auth/admin/callback`, and repurposed the old frontend callback route as a safe recovery page for stale magic-link returns.
+- Updated the auth and deployment docs with Google provider setup requirements, and removed the obsolete email-link flow references.
+
+## 2026-06-17 — Cloudflare organizer auth deploy drift
+
+- Added Cloudflare Worker public origin bindings to `wrangler.toml` so deploys preserve the Pages callback origin used by Supabase organizer magic links.
+- Added targeted Worker logging and machine-readable response codes for Supabase OTP send failures so hosted organizer sign-in errors expose the upstream status, code, and redirect origin in Cloudflare logs without leaking secrets.
+- Mapped Supabase email-send rate limits to a clearer organizer sign-in message with `429` and `Retry-After` instead of the generic send-link failure.
+- Clarified Worker Supabase auth environment docs, including the required anon key and the split between secret keys and public origin bindings.
+
 ## 2026-06-17 — Event removal and Luma preview
 
 - Added an organizer event removal flow with a simple reusable confirmation dialog and server-side audit logging for successful deletions.

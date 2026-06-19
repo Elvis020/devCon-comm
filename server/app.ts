@@ -18,7 +18,7 @@ import { createQuizSession, getAllQuizSessions, getQuizSessionByCode, getQuizSes
 import { createResponse, getResponseByQuestionAndUser, getResponsesByQuestion } from '@/lib/mock-db/responses';
 import { addSpeaker, getSpeakerByEmail, getSpeakersByEvent, removeSpeaker } from '@/lib/mock-db/speakers';
 import { getSupabaseAdminClient, isSupabaseServerConfigured } from '@/lib/supabase/server';
-import { adminLoginErrorPath, completeSupabaseAdminCallback, completeSupabaseAdminToken, configuredFrontendOrigins, defaultAdminRedirectPath, getAdminSession, isSupabaseAdminAuthConfigured, recordAdminAudit, requireAdmin, revokeAdminSession, startLocalAdminSession, startSupabaseAdminOtp } from '@/lib/supabase/admin-auth';
+import { adminLoginErrorPath, completeSupabaseAdminCallback, configuredFrontendOrigins, defaultAdminRedirectPath, getAdminSession, isSupabaseAdminAuthConfigured, recordAdminAudit, requireAdmin, revokeAdminSession, startLocalAdminSession } from '@/lib/supabase/admin-auth';
 import { createSupabaseCommunityEvent, deleteSupabaseCommunityEvent, getSupabaseCommunityEventByExternalId, getSupabaseCommunityEventById, getSupabaseCommunityEventByRegistrationUrl, getSupabaseCommunityEvents, getSupabasePublicMeetups, updateSupabaseCommunityEvent } from '@/lib/supabase/community-events';
 import { uploadMeetupMedia, validateMeetupMediaFile } from '@/lib/supabase/media';
 import { getPublicLumaEventByUrl, type LumaImportDraft } from '@/lib/luma/events';
@@ -1305,28 +1305,10 @@ app.post('/api/auth/admin/login', async (c) => {
   const body = await c.req.json();
 
   if (isSupabaseAdminAuthConfigured(c)) {
-    const result = await startSupabaseAdminOtp(c, {
-      email: body.email,
-      redirectTo: body.redirect_to,
-    });
-
-    if (!result.ok) {
-      return c.json(
-        {
-          error: result.error,
-          retry_after_ms: 'retryAfterMs' in result ? result.retryAfterMs : undefined,
-        },
-        { status: result.status as 400 | 403 | 429 | 500 },
-      );
-    }
-
-    return c.json({
-      authenticated: false,
-      auth_mode: 'supabase',
-      email_sent: true,
-      retry_after_ms: result.retryAfterMs,
-      message: 'If this email is allowed, a secure organizer sign-in link has been sent.',
-    });
+    return c.json(
+      { error: 'Magic-link organizer sign-in is disabled. Continue with Google instead.' },
+      { status: 405 },
+    );
   }
 
   if (!startLocalAdminSession(c, body.password)) {
@@ -1344,7 +1326,7 @@ app.get('/api/auth/admin/callback', async (c) => {
   const next = String(c.req.query('next') ?? defaultAdminRedirectPath(c));
 
   if (!code) {
-    return c.redirect(adminLoginErrorPath(c, 'Organizer sign-in link is missing a code.'));
+    return c.redirect(adminLoginErrorPath(c, 'Google organizer sign-in did not return a code. Please try again.'));
   }
 
   const result = await completeSupabaseAdminCallback(c, code);
@@ -1353,24 +1335,6 @@ app.get('/api/auth/admin/callback', async (c) => {
   }
 
   return c.redirect(next.startsWith('/') && !next.startsWith('//') ? next : defaultAdminRedirectPath(c));
-});
-
-app.post('/api/auth/admin/exchange', async (c) => {
-  if (!isSupabaseAdminAuthConfigured(c)) {
-    return c.json({ error: 'Supabase admin auth is not configured.' }, 503);
-  }
-
-  const body = await c.req.json();
-  const accessToken = String(body.access_token ?? '');
-  const result = await completeSupabaseAdminToken(c, accessToken);
-  if (!result.ok) {
-    return c.json({ error: result.error }, { status: result.status as 401 | 403 | 500 });
-  }
-
-  return c.json({
-    authenticated: true,
-    auth_mode: 'supabase',
-  });
 });
 
 app.post('/api/auth/logout', async (c) => {
