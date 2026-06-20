@@ -14,7 +14,7 @@ import {
   validateMeetupImageFile,
 } from '@/src/lib/meetup-media-client';
 import { notify } from '@/src/lib/notify';
-import type { Event as CommunityEvent, EventChecklistItem, EventChecklistPhase, EventStatus } from '@/types';
+import type { Event as CommunityEvent, EventChecklistItem, EventChecklistPhase, EventStatus, PublicMeetupScheduleItem } from '@/types';
 
 const route = useRoute();
 const queryClient = useQueryClient();
@@ -28,6 +28,10 @@ const descriptionEditing = ref(false);
 const descriptionSaving = ref(false);
 const descriptionError = ref<string | null>(null);
 const descriptionDraft = ref('');
+const outlineEditing = ref(false);
+const outlineSaving = ref(false);
+const outlineError = ref<string | null>(null);
+const outlineDrafts = ref<PublicMeetupScheduleItem[]>([]);
 const seriesTypeDraft = ref<EventSeriesType>('monthly');
 const seriesTypeSaving = ref(false);
 const seriesTypeError = ref<string | null>(null);
@@ -39,6 +43,14 @@ const mediaUploadPurpose = ref<'cover' | 'photo' | null>(null);
 const photoTypeOptions = [
   { value: 'folder', label: 'Gallery / folder' },
   { value: 'image', label: 'Single image' },
+];
+const outlineTypeOptions: { value: PublicMeetupScheduleItem['type']; label: string }[] = [
+  { value: 'talk', label: 'Talk' },
+  { value: 'workshop', label: 'Workshop' },
+  { value: 'panel', label: 'Panel' },
+  { value: 'open_discussion', label: 'Open discussion' },
+  { value: 'networking', label: 'Networking' },
+  { value: 'break', label: 'Break' },
 ];
 const checklistPhaseOrder: EventChecklistPhase[] = ['setup', 'cfp', 'program', 'event_day', 'post_event'];
 const checklistPhaseLabels: Record<EventChecklistPhase, string> = {
@@ -73,6 +85,7 @@ const checklistByPhase = computed(() => checklistPhaseOrder
 const currentEventId = computed(() => String(route.params.eventId));
 const eventSeriesTypeOptions = EVENT_SERIES_TYPES.map((value) => ({ value, label: EVENT_SERIES_LABELS[value] }));
 const selectedSeriesTypeHelp = computed(() => EVENT_SERIES_HELP_TEXT[seriesTypeDraft.value]);
+const eventOutline = computed(() => event.value?.schedule ?? []);
 
 function broadcastPublicMeetupsRefresh() {
   if (typeof window === 'undefined') return;
@@ -96,6 +109,20 @@ function syncDescriptionDraft() {
   descriptionDraft.value = event.value?.description ?? '';
 }
 
+function createOutlineDraft(item?: Partial<PublicMeetupScheduleItem>): PublicMeetupScheduleItem {
+  return {
+    time: item?.time ?? '',
+    title: item?.title ?? '',
+    type: item?.type ?? 'talk',
+    lead: item?.lead ?? null,
+    resources: item?.resources ?? [],
+  };
+}
+
+function syncOutlineDrafts() {
+  outlineDrafts.value = eventOutline.value.map((item) => createOutlineDraft(item));
+}
+
 function syncSeriesTypeDraft() {
   if (!event.value) return;
   seriesTypeDraft.value = resolveEventSeriesType(event.value);
@@ -111,6 +138,7 @@ async function fetchOverview() {
   if (eventResponse.ok) {
     event.value = await eventResponse.json();
     syncDescriptionDraft();
+    syncOutlineDrafts();
     syncSeriesTypeDraft();
   }
   if (checklistResponse.ok) {
@@ -215,6 +243,108 @@ async function saveDescription() {
     notify.error(descriptionError.value);
   } finally {
     descriptionSaving.value = false;
+  }
+}
+
+function startOutlineEdit() {
+  syncOutlineDrafts();
+  if (outlineDrafts.value.length === 0) {
+    outlineDrafts.value = [createOutlineDraft()];
+  }
+  outlineError.value = null;
+  outlineEditing.value = true;
+}
+
+function cancelOutlineEdit() {
+  if (outlineSaving.value) return;
+  syncOutlineDrafts();
+  outlineError.value = null;
+  outlineEditing.value = false;
+}
+
+function addOutlineRow() {
+  outlineDrafts.value.push(createOutlineDraft());
+}
+
+function removeOutlineRow(index: number) {
+  outlineDrafts.value.splice(index, 1);
+  if (outlineDrafts.value.length === 0) {
+    outlineDrafts.value.push(createOutlineDraft());
+  }
+}
+
+function updateOutlineLead(index: number, value: string) {
+  const item = outlineDrafts.value[index];
+  if (!item) return;
+  item.lead = value;
+}
+
+function updateOutlineLeadFromEvent(index: number, inputEvent: Event) {
+  updateOutlineLead(index, inputEvent.target instanceof HTMLInputElement ? inputEvent.target.value : '');
+}
+
+function normalizeOutlineDrafts(): PublicMeetupScheduleItem[] {
+  const schedule: PublicMeetupScheduleItem[] = [];
+
+  for (const item of outlineDrafts.value) {
+    const time = item.time.trim();
+    const title = item.title.trim();
+    const lead = item.lead?.trim() ?? '';
+    const hasAnyContent = Boolean(time || title || lead);
+
+    if (!hasAnyContent) continue;
+    if (!title) {
+      throw new Error('Add a title for each outline item, or remove the empty row.');
+    }
+
+    schedule.push({
+      time: time || 'TBD',
+      title,
+      type: item.type,
+      lead: lead || null,
+      resources: [],
+    });
+  }
+
+  return schedule;
+}
+
+async function saveOutline() {
+  if (!event.value || outlineSaving.value) return;
+
+  let schedule: PublicMeetupScheduleItem[];
+  try {
+    schedule = normalizeOutlineDrafts();
+  } catch (error) {
+    outlineError.value = error instanceof Error ? error.message : 'Check the outline rows.';
+    return;
+  }
+
+  outlineSaving.value = true;
+  outlineError.value = null;
+
+  try {
+    const response = await fetch(`/api/events/${route.params.eventId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ schedule }),
+    });
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.error ?? 'Failed to update the program outline');
+    }
+
+    event.value = await response.json();
+    syncOutlineDrafts();
+    outlineEditing.value = false;
+    await invalidateEventQueries();
+    notify.success(schedule.length > 0 ? 'Program outline updated' : 'Program outline cleared');
+  } catch (error) {
+    outlineError.value = error instanceof Error ? error.message : 'Failed to update the program outline';
+    notify.error(outlineError.value);
+  } finally {
+    outlineSaving.value = false;
   }
 }
 
@@ -508,6 +638,109 @@ onMounted(fetchOverview);
             </div>
           </div>
         </div>
+
+        <section class="event-outline-panel">
+          <div class="event-outline-header">
+            <div class="min-w-0">
+              <p class="editorial-eyebrow">program outline</p>
+              <h2 class="event-outline-title">Optional event flow</h2>
+              <p class="mt-2 max-w-3xl text-sm leading-6 text-dc-gray">
+                Add this only when the event already has a clear run of sessions. Feedback and the public schedule can reuse these rows.
+              </p>
+            </div>
+            <button
+              v-if="!outlineEditing"
+              type="button"
+              class="event-overview-copy-action"
+              @click="startOutlineEdit"
+            >
+              {{ eventOutline.length > 0 ? 'Edit outline' : 'Add outline' }}
+            </button>
+          </div>
+
+          <div v-if="outlineEditing" class="event-outline-editor">
+            <div
+              v-for="(item, index) in outlineDrafts"
+              :key="index"
+              class="event-outline-edit-row"
+            >
+              <label>
+                <span>Time</span>
+                <input v-model="item.time" class="event-outline-input" placeholder="6:30 PM" />
+              </label>
+              <label>
+                <span>Title</span>
+                <input v-model="item.title" class="event-outline-input" placeholder="Session title" />
+              </label>
+              <label>
+                <span>Type</span>
+                <select v-model="item.type" class="event-outline-input">
+                  <option
+                    v-for="option in outlineTypeOptions"
+                    :key="option.value"
+                    :value="option.value"
+                  >
+                    {{ option.label }}
+                  </option>
+                </select>
+              </label>
+              <label>
+                <span>Lead</span>
+                <input
+                  :value="item.lead ?? ''"
+                  class="event-outline-input"
+                  placeholder="Optional"
+                  @input="updateOutlineLeadFromEvent(index, $event)"
+                />
+              </label>
+              <button
+                type="button"
+                class="event-outline-remove"
+                :disabled="outlineSaving"
+                @click="removeOutlineRow(index)"
+              >
+                Remove
+              </button>
+            </div>
+
+            <p v-if="outlineError" class="event-overview-copy-error">{{ outlineError }}</p>
+            <div class="event-overview-copy-actions">
+              <button type="button" class="event-overview-copy-action" :disabled="outlineSaving" @click="addOutlineRow">
+                Add row
+              </button>
+              <button type="button" class="editorial-action" :disabled="outlineSaving" @click="saveOutline">
+                {{ outlineSaving ? 'SAVING...' : 'SAVE OUTLINE' }}
+              </button>
+              <button
+                type="button"
+                class="event-overview-copy-cancel"
+                :disabled="outlineSaving"
+                @click="cancelOutlineEdit"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+
+          <div v-else-if="eventOutline.length > 0" class="event-outline-list">
+            <div
+              v-for="(item, index) in eventOutline"
+              :key="`${item.time}-${item.title}-${index}`"
+              class="event-outline-row"
+            >
+              <span class="event-outline-time">{{ item.time }}</span>
+              <span class="event-outline-copy">
+                <strong>{{ item.title }}</strong>
+                <span v-if="item.lead">Led by {{ item.lead }}</span>
+              </span>
+              <span class="event-outline-type">{{ item.type.replace('_', ' ') }}</span>
+            </div>
+          </div>
+
+          <div v-else class="event-outline-empty">
+            No program outline yet. That is okay for events that do not have one.
+          </div>
+        </section>
 
         <section class="event-checklist-panel">
           <div class="event-checklist-header">

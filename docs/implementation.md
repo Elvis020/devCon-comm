@@ -57,7 +57,7 @@
   - APIs: `/api/quiz/sessions*`, `/api/quiz/questions*`, `/api/quiz/state`, `/api/quiz/state/advance`, `/api/quiz/answer`, `/api/quiz/active`, `/api/quiz/join`
 - **Event feedback campaigns**
   - Active Vue pages: `src/views/admin/AdminFeedbackView.vue`, `src/views/FeedbackView.vue`
-  - APIs: `/api/events/[eventId]/feedback-campaign`, `/api/feedback/events/[eventId]`, `/api/feedback/events/[eventId]/submissions`
+  - APIs: `/api/events/[eventId]/feedback-campaign`, `DELETE /api/events/[eventId]/feedback-campaign`, `/api/feedback/events/[eventId]`, `/api/feedback/events/[eventId]/submissions`
   - Mock DB: `lib/mock-db/feedback.ts`
 - **Attendance analysis**
   - Active Vue pages: `src/views/admin/AdminAttendanceOverviewView.vue`, `src/views/admin/AdminAttendanceView.vue`
@@ -143,11 +143,12 @@
 - `src/views/admin/AdminFeedbackOverviewView.vue` renders the Feedback Hub as two quiet entry cards: website feedback from the shared `/api/feedback/inbox` query, and event feedback reports grouped by selectable period. Detailed stream content stays hidden until an organizer opens one card, the website inbox only fetches after a manual load/refresh action, event reports default to the current month when that period exists, event rows now keep a lighter identity block on the left with a full-width stat strip plus end-aligned action on desktop, and website feedback uses optimistic mutation plus query invalidation when organizers move notes through `new`, `reviewing`, `done`, and `wont_fix`.
 - `src/views/admin/AdminEventsView.vue` reads the organizer event list through the shared TanStack query layer, shows focusable detail popovers for the compact lifecycle legend, can upload a picked cover image during event creation, imports existing Luma events into Supabase from the create-event page, and invalidates the event-list plus overview queries after creating a new event.
 - `src/views/admin/AdminAuditLogView.vue` reads audit rows through the shared TanStack query layer and now swaps directly into a dedicated audit-log skeleton while the route data is loading.
-- `src/views/admin/AdminEventView.vue` invalidates shared event/overview queries after checklist, photo-link, and media-upload mutations so status and media changes stay visible across routes.
+- `src/views/admin/AdminEventView.vue` invalidates shared event/overview queries after checklist, program-outline, photo-link, and media-upload mutations so status, schedule, and media changes stay visible across routes.
 - `src/lib/meetup-media-client.ts` centralizes browser-side meetup image validation, compression, and upload helpers so organizer create/edit surfaces share the same storage limits and encoding behavior.
 - `src/lib/event-form.ts` centralizes Zod validation for organizer event creation so the create form and `/api/events` server endpoint share the same required-field, slug, date, and URL rules.
 - `src/views/admin/AdminAttendanceView.vue` uploads/replaces a Luma CSV and renders post-event import metrics, source/ticket breakdowns, checked-in guests, and approved no-shows.
 - `src/views/admin/AdminEventView.vue` renders the shared chronological event checklist from `/api/events/:eventId/checklist`; checking status milestones can advance the event state, while the status dropdown remains available for manual correction.
+- `src/views/admin/AdminEventView.vue` also manages optional program outlines in `event.schedule`, letting organizers add structured time/title/type/lead rows when a meetup has a run of show. Empty outlines are allowed, and event feedback can reuse saved schedule rows as activity prompts.
 - `src/views/admin/AdminEventView.vue` also manages event media: organizers can upload selected cover/photo images to Supabase Storage or add website-compatible `{ url, type }` links where `type` is `image` for direct media or `folder` for shared galleries.
 - `src/views/admin/AdminQuizView.vue` generates local QR-code join links for the live lobby.
 - Legacy Next pages/components remain in `app/`, `components/`, and `hooks/` as a reference while routes are ported.

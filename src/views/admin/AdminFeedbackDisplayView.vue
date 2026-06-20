@@ -13,29 +13,17 @@ const event = ref<CommunityEvent | null>(null);
 const publicUrl = ref<string | null>(null);
 const qrCodeUrl = ref<string | null>(null);
 const available = ref(false);
-const feedbackWindow = ref<{ opens_at: string | null; closes_at: string | null } | null>(null);
 
 const eventId = computed(() => String(route.params.eventId ?? ''));
 const canShowQr = computed(() => available.value && Boolean(publicUrl.value) && Boolean(qrCodeUrl.value));
 
-function formatWindowDate(value: string | null): string | null {
-  if (!value) return null;
+const eventDateCopy = computed(() => {
+  if (!event.value) return '';
   return new Intl.DateTimeFormat('en', {
+    weekday: 'short',
     month: 'short',
     day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(new Date(value));
-}
-
-const windowCopy = computed(() => {
-  if (!feedbackWindow.value?.opens_at || !feedbackWindow.value?.closes_at) {
-    return 'Feedback window follows the event campaign settings.';
-  }
-
-  const opens = formatWindowDate(feedbackWindow.value.opens_at);
-  const closes = formatWindowDate(feedbackWindow.value.closes_at);
-  return `${opens} to ${closes}`;
+  }).format(new Date(event.value.event_date));
 });
 
 async function buildQrCode(url: string) {
@@ -61,7 +49,6 @@ async function loadDisplay() {
 
     event.value = eventPayload;
     available.value = statusPayload.available;
-    feedbackWindow.value = statusPayload.feedback_window;
     publicUrl.value = statusPayload.public_url;
 
     if (statusPayload.available && statusPayload.public_url) {
@@ -108,12 +95,28 @@ onMounted(() => {
           <div v-if="canShowQr" class="feedback-display-grid">
             <div class="feedback-display-qr-wrap">
               <img :src="qrCodeUrl as string" :alt="`QR code for ${event.name} feedback form`" class="feedback-display-qr" />
+              <p class="feedback-display-qr-caption">Camera open. Point at the code.</p>
             </div>
             <div class="feedback-display-copy">
-              <p class="feedback-display-kicker">Scan to share feedback</p>
-              <div class="feedback-display-meta">
-                <p><strong>Window</strong> {{ windowCopy }}</p>
+              <p class="feedback-display-kicker">event feedback</p>
+              <div class="feedback-display-story">
+                <h2>Scan. Rate. Leave one note.</h2>
+                <p>Help us keep what worked and fix what did not. It takes about two minutes.</p>
               </div>
+              <dl class="feedback-display-meta">
+                <div>
+                  <dt>Event</dt>
+                  <dd>{{ event.name }}</dd>
+                </div>
+                <div>
+                  <dt>Date</dt>
+                  <dd>{{ eventDateCopy }}</dd>
+                </div>
+                <div v-if="event.location?.label">
+                  <dt>Venue</dt>
+                  <dd>{{ event.location.label }}</dd>
+                </div>
+              </dl>
             </div>
           </div>
 

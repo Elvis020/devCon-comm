@@ -5,6 +5,11 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 
 ---
 
+## 2026-06-20 — Optional event program outlines
+
+- Added an optional Program outline editor to the organizer event overview so events can store structured time/title/type/lead rows when a run of show exists, while leaving events with no outline unchanged.
+- Saved outlines into the existing `event.schedule` field so public meetup schedules and feedback activity drafts can reuse the same structured event flow.
+
 ## 2026-06-20 — Pages asset fallback fix
 
 - Updated the Cloudflare Pages worker so stale `/assets/*.js` requests no longer receive `index.html` as `text/html`, preventing strict module MIME failures after a deploy or during organizer sign-in redirects.
@@ -296,6 +301,7 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 
 - Added event-scoped feedback campaigns with default post-event questions, local JSON persistence, and Supabase migration support.
 - Added organizer feedback management at `[adminBase]/events/[eventId]/feedback` with campaign status, auto-open behavior, question editing, public link copy, and recent response review.
+- Added a rare organizer remove action for event feedback forms, backed by `DELETE /api/events/:eventId/feedback-campaign`, so organizers can reset a form while keeping existing responses available for reports.
 - Added public community feedback forms at `/feedback/[eventId]` that render campaign questions and submit structured event answers.
 - Added Hono routes for feedback campaign management, public campaign lookup, and event feedback submission.
 - Added feedback to the event overview and organizer event navigation.

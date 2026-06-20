@@ -11,7 +11,7 @@ import { ROUTE_FEEDBACK_TURNSTILE_ACTION, validateTurnstileToken } from '@/lib/t
 import { attendanceMonthForEvent, buildAttendanceInsights, buildAttendanceLedger, buildAttendanceSummary, getAttendanceImports, getLatestAttendanceImport, removeAttendanceImport, replaceAttendanceImportFromCsv } from '@/lib/mock-db/attendance';
 import { getEventChecklist, updateEventChecklistItem } from '@/lib/mock-db/event-checklists';
 import { createEvent as createMockEvent, deleteEvent as deleteMockEvent, getAllEvents as getAllMockEvents, getEventById as getMockEventById, updateEvent as updateMockEvent } from '@/lib/mock-db/events';
-import { createDefaultFeedbackCampaign, createEventFeedbackSubmission, getAllFeedbackCampaigns, getAllFeedbackSubmissions, getFeedbackCampaignByEvent, getFeedbackSubmissionByResponseToken, getFeedbackSubmissionsByEvent, getOrCreateFeedbackCampaign, updateFeedbackCampaign } from '@/lib/mock-db/feedback';
+import { createDefaultFeedbackCampaign, createEventFeedbackSubmission, deleteFeedbackCampaignByEvent, getAllFeedbackCampaigns, getAllFeedbackSubmissions, getFeedbackCampaignByEvent, getFeedbackSubmissionByResponseToken, getFeedbackSubmissionsByEvent, getOrCreateFeedbackCampaign, updateFeedbackCampaign } from '@/lib/mock-db/feedback';
 import { createQuestion, deleteQuestion, getQuestionById, getQuestionsBySession, reorderQuestions, updateQuestion } from '@/lib/mock-db/questions';
 import { readData, writeData } from '@/lib/mock-db';
 import { createQuizParticipant, getQuizParticipantBySessionAndUser, getQuizParticipantsBySession, updateQuizParticipant } from '@/lib/mock-db/quiz-participants';
@@ -1221,6 +1221,40 @@ app.patch('/api/events/:eventId/feedback-campaign', async (c) => {
     public_url: `${publicAppOrigin(c)}/feedback/${eventId}`,
     feedback_window: feedbackCampaignWindow(event, campaign),
     is_open: isFeedbackCampaignOpen(event, campaign),
+  });
+});
+
+app.delete('/api/events/:eventId/feedback-campaign', async (c) => {
+  const adminError = await requireAdmin(c);
+  if (adminError) return adminError;
+
+  const eventId = c.req.param('eventId');
+  const event = await getEventById(eventId, c);
+
+  if (!event) {
+    return c.json({ error: 'Event not found' }, 404);
+  }
+
+  const removedCampaign = await deleteFeedbackCampaignByEvent(eventId);
+  if (!removedCampaign) {
+    return c.json({ error: 'Feedback form not found' }, 404);
+  }
+
+  await auditAdminAction(c, {
+    action: 'feedback.campaign.delete',
+    targetType: 'event',
+    targetId: eventId,
+    metadata: {
+      campaign_id: removedCampaign.id,
+      status: removedCampaign.status,
+      question_count: removedCampaign.questions.length,
+    },
+  });
+
+  return c.json({
+    deleted: true,
+    event_id: eventId,
+    campaign_id: removedCampaign.id,
   });
 });
 

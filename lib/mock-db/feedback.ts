@@ -110,6 +110,15 @@ export async function updateFeedbackCampaign(
   return campaigns[index];
 }
 
+export async function deleteFeedbackCampaignByEvent(eventId: string): Promise<FeedbackCampaign | null> {
+  const campaigns = await getAllFeedbackCampaigns();
+  const existing = campaigns.find((campaign) => campaign.event_id === eventId) ?? null;
+  if (!existing) return null;
+
+  await writeData(CAMPAIGNS_FILE, campaigns.filter((campaign) => campaign.event_id !== eventId));
+  return existing;
+}
+
 export async function createEventFeedbackSubmission(
   data: Omit<EventFeedbackSubmission, 'id' | 'created_at'>,
 ): Promise<EventFeedbackSubmission> {

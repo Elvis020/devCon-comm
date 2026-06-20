@@ -15,6 +15,7 @@ Feedback has two related flows:
 
 - Testers open the feedback launcher, enter a name or choose Anonymous, and submit route-aware feedback.
 - Organizers create or edit an event feedback campaign.
+- If an event has an optional program outline, the feedback builder can reuse those schedule rows as activity prompts; events without outlines can still use talks or custom activities.
 - Attendees complete the public feedback form after an event.
 - Public event feedback stores a per-event anonymous browser token so the same browser can submit once per event without requiring name or email.
 - Organizers review responses in the event Feedback page or global Feedback Hub.
@@ -48,6 +49,7 @@ Manual checks:
 
 - Submit route-level feedback from a public route.
 - Create or edit an event feedback campaign.
+- Remove an event feedback form when an event needs a fresh setup.
 - Preview and submit the public event form.
 - Reopen the same public event form in the same browser and confirm it shows the already-received state.
 - Confirm organizer response counts and response lists update.

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import AppDropdown from '@/src/components/AppDropdown.vue';
 import AdminFeedbackPageSkeleton from '@/src/components/ui/page-skeletons/AdminFeedbackPageSkeleton.vue';
+import { adminPath } from '@/src/admin-routes';
 import { notify } from '@/src/lib/notify';
 import type { Event as CommunityEvent, EventFeedbackSubmission, FeedbackCampaign, FeedbackQuestion, FeedbackQuestionType, PublicMeetupScheduleItem, Talk } from '@/types';
 
@@ -33,8 +34,10 @@ interface PreviewDraftPayload {
 }
 
 const route = useRoute();
+const router = useRouter();
 const loading = ref(true);
 const saving = ref(false);
+const removing = ref(false);
 const error = ref('');
 const publicUrl = ref('');
 const isOpen = ref(false);
@@ -493,6 +496,38 @@ async function publishCampaign() {
   });
 }
 
+async function removeFeedbackForm() {
+  if (!event.value || removing.value) return;
+
+  const confirmed = window.confirm(`Remove the feedback form for ${event.value.name}? Existing responses stay in the reports, but this form and its questions will be removed.`);
+  if (!confirmed) return;
+
+  removing.value = true;
+  error.value = '';
+
+  try {
+    const response = await fetch(`/api/events/${route.params.eventId}/feedback-campaign`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      error.value = payload.error ?? 'Unable to remove feedback form';
+      return;
+    }
+
+    notify.success('Feedback form removed.', {
+      description: 'Existing responses were kept for reporting.',
+    });
+    await router.push(adminPath('feedback'));
+  } catch {
+    error.value = 'Unable to remove feedback form';
+  } finally {
+    removing.value = false;
+  }
+}
+
 onMounted(fetchCampaign);
 
 onBeforeUnmount(() => {
@@ -804,6 +839,20 @@ onBeforeUnmount(() => {
                   <p class="mt-2 text-sm leading-6 text-dc-ink">{{ answerPreview(submission) }}</p>
                 </article>
               </div>
+            </section>
+
+            <section class="editorial-panel p-5">
+              <p class="editorial-eyebrow">rare action</p>
+              <h2 class="mt-2 text-xl font-black tracking-tight text-dc-ink">Remove this form</h2>
+              <p class="mt-2 text-sm font-semibold leading-6 text-dc-gray">Use this only when the event needs a fresh feedback setup. Existing responses stay available for reports.</p>
+              <button
+                type="button"
+                class="feedback-remove-action motion-press mt-4 min-h-10 rounded px-4 py-2 font-mono text-xs font-bold uppercase tracking-wide"
+                :disabled="removing || saving"
+                @click="removeFeedbackForm"
+              >
+                {{ removing ? 'Removing...' : 'Remove form' }}
+              </button>
             </section>
           </aside>
         </section>
