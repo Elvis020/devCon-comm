@@ -47,6 +47,7 @@ const photoTypeOptions = [
 ];
 const outlineTypeOptions: { value: PublicMeetupScheduleItem['type']; label: string }[] = [
   { value: 'talk', label: 'Talk' },
+  { value: 'system_design', label: 'System design' },
   { value: 'workshop', label: 'Workshop' },
   { value: 'panel', label: 'Panel' },
   { value: 'open_discussion', label: 'Open discussion' },
@@ -128,6 +129,7 @@ function inferOutlineType(title: string): PublicMeetupScheduleItem['type'] {
   const normalized = title.toLowerCase();
   if (normalized.includes('break')) return 'break';
   if (normalized.includes('network')) return 'networking';
+  if (normalized.includes('system design') || normalized.includes('architecture scenario')) return 'system_design';
   if (normalized.includes('demo')) return 'workshop';
   if (normalized.includes('panel')) return 'panel';
   if (normalized.includes('session') || normalized.includes('address')) return 'open_discussion';

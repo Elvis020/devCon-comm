@@ -28,6 +28,7 @@ const fullTabs: AdminEventTab[] = [
   { href: 'speakers', label: 'Speakers' },
   { href: 'attendance', label: 'Attendance' },
   { href: 'quiz', label: 'Quiz', soon: true },
+  { href: 'system-design', label: 'System Design' },
   { href: 'feedback', label: 'Feedback' },
 ];
 const quarterlyTabs: AdminEventTab[] = [

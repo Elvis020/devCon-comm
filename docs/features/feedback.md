@@ -28,13 +28,14 @@ Feedback has two related flows:
 | `src/views/FeedbackView.vue` | Public event feedback form |
 | `src/views/admin/AdminFeedbackView.vue` | Event feedback campaign builder and response review |
 | `src/views/admin/AdminFeedbackOverviewView.vue` | Feedback hub and app feedback inbox |
-| `lib/mock-db/feedback.ts` | JSON-backed event feedback persistence |
+| `lib/supabase/feedback-campaigns.ts` | Supabase-backed event feedback campaigns, questions, and submissions |
+| `lib/mock-db/feedback.ts` | Local JSON fallback for event feedback persistence |
 | `supabase/migrations/20260613000000_event_feedback_campaigns.sql` | Event feedback schema |
 | `server/app.ts` | Feedback API routes |
 
 ## Configuration
 
-Route-level app feedback uses Supabase helpers when configured. Event feedback currently has JSON persistence plus Supabase schema work for migration.
+Route-level app feedback uses Supabase helpers when configured. Event feedback campaigns, questions, and submissions use Supabase in deployed environments, with the JSON mock store kept as the local fallback.
 
 ## Event Feedback Response Guard
 

@@ -445,6 +445,7 @@ function scheduleType(value: Json | undefined): PublicMeetupScheduleItem['type']
     || value === 'talk'
     || value === 'panel'
     || value === 'workshop'
+    || value === 'system_design'
     || value === 'open_discussion'
     || value === 'break'
   ) {

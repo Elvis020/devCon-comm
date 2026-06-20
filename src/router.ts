@@ -16,6 +16,7 @@ import AdminLoginView from './views/admin/AdminLoginView.vue';
 import AdminOrganizersView from './views/admin/AdminOrganizersView.vue';
 import AdminQuizView from './views/admin/AdminQuizView.vue';
 import AdminSpeakersView from './views/admin/AdminSpeakersView.vue';
+import AdminSystemDesignView from './views/admin/AdminSystemDesignView.vue';
 import AdminTalksView from './views/admin/AdminTalksView.vue';
 import CfpView from './views/CfpView.vue';
 import DashboardView from './views/DashboardView.vue';
@@ -79,6 +80,7 @@ export const router = createRouter({
     { path: adminPath('events/:eventId/attendance'), name: 'admin-attendance', component: AdminAttendanceView },
     { path: adminPath('events/:eventId/quiz'), name: 'admin-quiz', component: AdminQuizView },
     { path: adminPath('events/:eventId/quiz/live'), name: 'admin-quiz-live', component: AdminQuizView },
+    { path: adminPath('events/:eventId/system-design'), name: 'admin-system-design', component: AdminSystemDesignView },
     { path: adminPath('events/:eventId/feedback'), name: 'admin-feedback', component: AdminFeedbackView },
     { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundView },
   ],

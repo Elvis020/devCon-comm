@@ -5,12 +5,19 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 
 ---
 
+## 2026-06-20 — Monthly system design sessions
+
+- Added `System design` as a first-class program outline item type so monthly architecture scenarios can sit alongside talks, panels, workshops, and discussion slots.
+- Added an organizer System Design tab for each full event workflow, showing saved scenario rows from the program outline and linking back to the overview editor when no scenario has been added yet.
+- Added a checklist milestone for preparing the monthly system design scenario, with existing checklists backfilled when they are loaded.
+
 ## 2026-06-20 — Optional event program outlines
 
 - Added an optional Program outline editor to the organizer event overview so events can store structured time/title/type/lead rows when a run of show exists, while leaving events with no outline unchanged.
 - Saved outlines into the existing `event.schedule` field so public meetup schedules and feedback activity drafts can reuse the same structured event flow.
 - Added a paste parser for plain text program outlines, including `PROGRAM OUTLINE` headings, final time ranges, `by Speaker`, and `- Speaker` lead formats.
 - Updated fresh event feedback campaigns to generate and persist per-activity questions from the saved program outline instead of leaving organizers on the generic default campaign.
+- Moved event feedback campaign, question, and submission persistence onto Supabase in deployed environments so Luma-imported Supabase events can create feedback forms without hitting the JSON mock store.
 
 ## 2026-06-20 — Pages asset fallback fix
 

@@ -50,6 +50,12 @@ const DEFAULT_CHECKLIST: ChecklistTemplateItem[] = [
     status_on_complete: null,
   },
   {
+    phase: 'program',
+    label: 'Prepare system design session',
+    description: 'Add the monthly architecture scenario, facilitator, and discussion slot.',
+    status_on_complete: null,
+  },
+  {
     phase: 'event_day',
     label: 'Start event day',
     description: 'Mark the event as live when organizers begin running the room.',
@@ -122,6 +128,39 @@ function createDefaultChecklist(eventId: string, status: EventStatus | null = nu
   }));
 }
 
+async function backfillMissingTemplateItems(
+  allItems: EventChecklistItem[],
+  eventItems: EventChecklistItem[],
+  eventId: string,
+): Promise<EventChecklistItem[]> {
+  const existingLabels = new Set(eventItems.map((item) => item.label));
+  const missingTemplateItems = DEFAULT_CHECKLIST.filter((item) => !existingLabels.has(item.label));
+
+  if (missingTemplateItems.length === 0) {
+    return eventItems;
+  }
+
+  const timestamp = now();
+  const nextOrderIndex = eventItems.reduce((max, item) => Math.max(max, item.order_index), -1) + 1;
+  const missingItems = missingTemplateItems.map((item, index) => ({
+    id: generateId(),
+    event_id: eventId,
+    phase: item.phase,
+    label: item.label,
+    description: item.description,
+    order_index: nextOrderIndex + index,
+    status_on_complete: item.status_on_complete,
+    completed: false,
+    completed_at: null,
+    completed_by: null,
+    updated_at: timestamp,
+  }));
+
+  await writeData<EventChecklistItem>(FILE, [...allItems, ...missingItems]);
+
+  return [...eventItems, ...missingItems].sort((a, b) => a.order_index - b.order_index);
+}
+
 export async function getEventChecklist(eventId: string, status: EventStatus | null = null): Promise<EventChecklistItem[]> {
   const items = await readData<EventChecklistItem>(FILE);
   const eventItems = items
@@ -145,12 +184,14 @@ export async function getEventChecklist(eventId: string, status: EventStatus | n
         };
       });
       await writeData(FILE, nextItems);
-      return nextItems
+      const nextEventItems = nextItems
         .filter((item) => item.event_id === eventId)
         .sort((a, b) => a.order_index - b.order_index);
+
+      return backfillMissingTemplateItems(nextItems, nextEventItems, eventId);
     }
 
-    return eventItems;
+    return backfillMissingTemplateItems(items, eventItems, eventId);
   }
 
   const defaults = createDefaultChecklist(eventId, status);

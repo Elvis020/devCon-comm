@@ -141,6 +141,7 @@ function scheduleTypeLabel(type: PublicMeetupScheduleItem['type']) {
     talk: 'Talk',
     panel: 'Panel',
     workshop: 'Workshop',
+    system_design: 'System design',
     open_discussion: 'Open discussion',
     break: 'Break',
   }[type];

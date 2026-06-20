@@ -58,7 +58,8 @@
 - **Event feedback campaigns**
   - Active Vue pages: `src/views/admin/AdminFeedbackView.vue`, `src/views/FeedbackView.vue`
   - APIs: `/api/events/[eventId]/feedback-campaign`, `DELETE /api/events/[eventId]/feedback-campaign`, `/api/feedback/events/[eventId]`, `/api/feedback/events/[eventId]/submissions`
-  - Mock DB: `lib/mock-db/feedback.ts`
+  - Supabase persistence: `lib/supabase/feedback-campaigns.ts`
+  - Mock DB fallback: `lib/mock-db/feedback.ts`
 - **Attendance analysis**
   - Active Vue pages: `src/views/admin/AdminAttendanceOverviewView.vue`, `src/views/admin/AdminAttendanceView.vue`
   - APIs: `/api/attendance/monthly`, `/api/events/[eventId]/attendance`, `/api/events/[eventId]/attendance/import`, `DELETE /api/events/[eventId]/attendance`

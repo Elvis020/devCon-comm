@@ -98,6 +98,7 @@ devcongress-comm-idea/
 - `[adminBase]/events/[eventId]/attendance` — organizer-only Luma attendance analysis
 - `[adminBase]/events/[eventId]/quiz` — quiz builder
 - `[adminBase]/events/[eventId]/quiz/live` — live quiz host controls
+- `[adminBase]/events/[eventId]/system-design` — monthly system design scenario summary from the event program outline
 - `[adminBase]/events/[eventId]/feedback` — feedback campaign builder and response review
 
 ### Active Hono API Routes (`server/app.ts`)

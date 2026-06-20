@@ -112,7 +112,7 @@ export interface PublicMeetupSpeaker {
 export interface PublicMeetupScheduleItem {
   time: string;
   title: string;
-  type: 'networking' | 'talk' | 'panel' | 'workshop' | 'open_discussion' | 'break';
+  type: 'networking' | 'talk' | 'panel' | 'workshop' | 'system_design' | 'open_discussion' | 'break';
   lead: string | null;
   resources: {
     title: string;

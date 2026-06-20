@@ -21,6 +21,7 @@ import { addSpeaker, getSpeakerByEmail, getSpeakersByEvent, removeSpeaker } from
 import { getSupabaseAdminClient, isSupabaseServerConfigured } from '@/lib/supabase/server';
 import { completeSupabaseAdminToken, configuredFrontendOrigins, defaultAdminRedirectPath, getAdminSession, isSupabaseAdminAuthConfigured, recordAdminAudit, requireAdmin, revokeAdminSession, startLocalAdminSession } from '@/lib/supabase/admin-auth';
 import { createSupabaseCommunityEvent, deleteSupabaseCommunityEvent, deleteSupabaseCommunityEventsByImportMatch, getSupabaseCommunityEventByExternalId, getSupabaseCommunityEventById, getSupabaseCommunityEventByRegistrationUrl, getSupabaseCommunityEvents, getSupabasePublicMeetups, updateSupabaseCommunityEvent } from '@/lib/supabase/community-events';
+import { createSupabaseEventFeedbackSubmission, createSupabaseFeedbackCampaign, deleteSupabaseFeedbackCampaignByEvent, getSupabaseFeedbackCampaignByEvent, getSupabaseFeedbackSubmissionsByEvent, updateSupabaseFeedbackCampaign } from '@/lib/supabase/feedback-campaigns';
 import { uploadMeetupMedia, validateMeetupMediaFile } from '@/lib/supabase/media';
 import { getPublicLumaEventByUrl, type LumaImportDraft } from '@/lib/luma/events';
 import { createTalk, getAllTalks, getTalkById, getTalksByEvent, updateTalk } from '@/lib/mock-db/talks';
@@ -30,7 +31,7 @@ import { generateId, now } from '@/lib/utils';
 import { envValue } from '@/server/env';
 import { advanceQuizSessionState, buildQuizStateResponse } from '@/server/quiz-state';
 import type { Context } from 'hono';
-import type { Event, EventChecklistItem, EventSeriesType, FeedbackAnswer, FeedbackCampaign, FeedbackCampaignStatus, FeedbackQuestion, FeedbackQuestionType, GeneratedQuizFromPaperResponse, LeaderboardEntry, PublicMeetup, PublicMeetupScheduleItem, PublicMeetupSpeaker, Question, QuizParticipant, Response, Talk, User } from '@/types';
+import type { Event, EventChecklistItem, EventFeedbackSubmission, EventSeriesType, FeedbackAnswer, FeedbackCampaign, FeedbackCampaignStatus, FeedbackQuestion, FeedbackQuestionType, GeneratedQuizFromPaperResponse, LeaderboardEntry, PublicMeetup, PublicMeetupScheduleItem, PublicMeetupSpeaker, Question, QuizParticipant, Response, Talk, User } from '@/types';
 import type { FeedbackKind, FeedbackStatus } from '@/types/supabase';
 
 const app = new Hono();
@@ -210,6 +211,63 @@ async function deleteEvent(id: string, c?: Context): Promise<void> {
   const deleted = await deleteSupabaseCommunityEvent(id, c);
   if (deleted !== null) return;
   await deleteMockEvent(id);
+}
+
+async function getFeedbackCampaignByEventStore(eventId: string, c?: Context): Promise<FeedbackCampaign | undefined> {
+  const campaign = await getSupabaseFeedbackCampaignByEvent(eventId, c);
+  if (campaign !== null) return campaign;
+  return getFeedbackCampaignByEvent(eventId);
+}
+
+async function getOrCreateFeedbackCampaignStore(eventId: string, c?: Context): Promise<FeedbackCampaign> {
+  const existing = await getSupabaseFeedbackCampaignByEvent(eventId, c);
+  if (existing !== null) {
+    if (existing) return existing;
+    const campaign = createDefaultFeedbackCampaign(eventId);
+    const created = await createSupabaseFeedbackCampaign(campaign, c);
+    if (created) return created;
+  }
+
+  return getOrCreateFeedbackCampaign(eventId);
+}
+
+async function updateFeedbackCampaignStore(
+  eventId: string,
+  updates: Partial<Omit<FeedbackCampaign, 'id' | 'event_id' | 'created_at'>>,
+  c?: Context,
+): Promise<FeedbackCampaign> {
+  let campaign = await updateSupabaseFeedbackCampaign(eventId, updates, c);
+  if (campaign !== null) {
+    if (campaign) return campaign;
+    const created = await createSupabaseFeedbackCampaign(createDefaultFeedbackCampaign(eventId), c);
+    if (created) {
+      campaign = await updateSupabaseFeedbackCampaign(eventId, updates, c);
+      if (campaign) return campaign;
+    }
+  }
+
+  return updateFeedbackCampaign(eventId, updates);
+}
+
+async function deleteFeedbackCampaignByEventStore(eventId: string, c?: Context): Promise<FeedbackCampaign | null> {
+  const campaign = await deleteSupabaseFeedbackCampaignByEvent(eventId, c);
+  if (campaign !== null && campaign !== undefined) return campaign;
+  return deleteFeedbackCampaignByEvent(eventId);
+}
+
+async function getFeedbackSubmissionsByEventStore(eventId: string, c?: Context): Promise<EventFeedbackSubmission[]> {
+  const submissions = await getSupabaseFeedbackSubmissionsByEvent(eventId, c);
+  if (submissions !== null) return submissions;
+  return getFeedbackSubmissionsByEvent(eventId);
+}
+
+async function createEventFeedbackSubmissionStore(
+  data: Omit<EventFeedbackSubmission, 'id' | 'created_at'>,
+  c?: Context,
+): Promise<EventFeedbackSubmission> {
+  const submission = await createSupabaseEventFeedbackSubmission(data, c);
+  if (submission) return submission;
+  return createEventFeedbackSubmission(data);
 }
 
 async function deleteImportedEvent(event: Event, c?: Context): Promise<{ deleted_ids: string[]; deleted: boolean }> {
@@ -564,17 +622,17 @@ function feedbackQuestionsFromActivityLabels(labels: string[]): FeedbackQuestion
   ];
 }
 
-async function hydrateDefaultFeedbackCampaignFromEvent(event: Event, campaign: FeedbackCampaign, eventTalks: Talk[]): Promise<FeedbackCampaign> {
+async function hydrateDefaultFeedbackCampaignFromEvent(event: Event, campaign: FeedbackCampaign, eventTalks: Talk[], c?: Context): Promise<FeedbackCampaign> {
   if (!isDefaultFeedbackCampaign(campaign)) return campaign;
 
   const labels = feedbackActivityLabelsForEvent(event, eventTalks);
   if (labels.length === 0) return campaign;
 
-  return updateFeedbackCampaign(event.id, {
+  return updateFeedbackCampaignStore(event.id, {
     title: `How was ${event.name}?`,
     intro: 'On a scale of 1 - 5, rate the sessions you joined where 1 is extremely unsatisfied and 5 is extremely satisfied.',
     questions: feedbackQuestionsFromActivityLabels(labels),
-  });
+  }, c);
 }
 
 function normalizeEventFeedbackResponseToken(input: unknown): string | null {
@@ -1255,12 +1313,12 @@ app.get('/api/events/:eventId/feedback-campaign', async (c) => {
   }
 
   const [baseCampaign, submissions, talks] = await Promise.all([
-    getOrCreateFeedbackCampaign(eventId),
-    getFeedbackSubmissionsByEvent(eventId),
+    getOrCreateFeedbackCampaignStore(eventId, c),
+    getFeedbackSubmissionsByEventStore(eventId, c),
     getTalksByEvent(eventId),
   ]);
   const visibleTalks = talks.filter((talk) => talk.status !== 'rejected');
-  const campaign = await hydrateDefaultFeedbackCampaignFromEvent(event, baseCampaign, visibleTalks);
+  const campaign = await hydrateDefaultFeedbackCampaignFromEvent(event, baseCampaign, visibleTalks, c);
 
   return c.json({
     event,
@@ -1297,7 +1355,7 @@ app.patch('/api/events/:eventId/feedback-campaign', async (c) => {
     return c.json({ error: 'Add at least one feedback question' }, 400);
   }
 
-  const campaign = await updateFeedbackCampaign(eventId, {
+  const campaign = await updateFeedbackCampaignStore(eventId, {
     title: typeof body.title === 'string' && body.title.trim() ? body.title.trim() : undefined,
     intro: typeof body.intro === 'string' ? body.intro.trim() || null : undefined,
     status,
@@ -1305,7 +1363,7 @@ app.patch('/api/events/:eventId/feedback-campaign', async (c) => {
     opens_at: typeof body.opens_at === 'string' && body.opens_at ? body.opens_at : body.opens_at === null ? null : undefined,
     closes_at: typeof body.closes_at === 'string' && body.closes_at ? body.closes_at : body.closes_at === null ? null : undefined,
     questions,
-  });
+  }, c);
 
   await auditAdminAction(c, {
     action: 'feedback.campaign.update',
@@ -1339,7 +1397,7 @@ app.delete('/api/events/:eventId/feedback-campaign', async (c) => {
     return c.json({ error: 'Event not found' }, 404);
   }
 
-  const removedCampaign = await deleteFeedbackCampaignByEvent(eventId);
+  const removedCampaign = await deleteFeedbackCampaignByEventStore(eventId, c);
   if (!removedCampaign) {
     return c.json({ error: 'Feedback form not found' }, 404);
   }
@@ -1371,7 +1429,7 @@ app.get('/api/feedback/events/:eventId', async (c) => {
     return c.json({ error: 'Event not found' }, 404);
   }
 
-  const campaign = await getOrCreateFeedbackCampaign(eventId);
+  const campaign = await getOrCreateFeedbackCampaignStore(eventId, c);
   const previewAllowed = previewRequested && !(await requireAdmin(c));
 
   if (!campaign || (!previewAllowed && !isFeedbackCampaignOpen(event, campaign))) {
@@ -1397,7 +1455,7 @@ app.get('/api/feedback/events/:eventId/status', async (c) => {
     return c.json({ available: false, error: 'Event not found' }, 404);
   }
 
-  const campaign = await getOrCreateFeedbackCampaign(eventId);
+  const campaign = await getOrCreateFeedbackCampaignStore(eventId, c);
   const available = isFeedbackCampaignOpen(event, campaign);
 
   return c.json({
@@ -1415,7 +1473,7 @@ app.post('/api/feedback/events/:eventId/submissions', async (c) => {
     return c.json({ error: 'Event not found' }, 404);
   }
 
-  const campaign = await getOrCreateFeedbackCampaign(eventId);
+  const campaign = await getOrCreateFeedbackCampaignStore(eventId, c);
 
   if (!campaign || !isFeedbackCampaignOpen(event, campaign)) {
     return c.json({ error: 'Feedback is not open for this event' }, 403);
@@ -1473,7 +1531,7 @@ app.post('/api/feedback/events/:eventId/submissions', async (c) => {
     return c.json({ error: 'Your response is too long. Please shorten the written comments a little.' }, 400);
   }
 
-  const submission = await createEventFeedbackSubmission({
+  const submission = await createEventFeedbackSubmissionStore({
     campaign_id: campaign.id,
     event_id: eventId,
     respondent_name: respondentName,
@@ -1482,24 +1540,7 @@ app.post('/api/feedback/events/:eventId/submissions', async (c) => {
     page_path: typeof body.page_path === 'string' ? body.page_path : null,
     user_agent: c.req.header('user-agent') ?? null,
     response_token_hash: responseTokenHash,
-  });
-
-  if (isSupabaseServerConfigured(c)) {
-    const supabase = getSupabaseAdminClient(c);
-    await supabase.from('feedback_submissions').insert({
-      event_id: eventId,
-      campaign_id: campaign.id,
-      tester_name: respondentName,
-      tester_email: respondentEmail,
-      type: 'suggestion',
-      message: serializedAnswers,
-      structured_answers: answers,
-      response_token_hash: responseTokenHash,
-      trigger_source: 'event_feedback_form',
-      page_path: submission.page_path,
-      user_agent: submission.user_agent,
-    });
-  }
+  }, c);
 
   return c.json({ id: submission.id }, 201);
 });
