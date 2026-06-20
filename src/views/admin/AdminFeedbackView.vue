@@ -76,7 +76,7 @@ const statusOptions = [
 const statusLabel = computed(() => {
   if (form.status === 'active') return 'Open manually';
   if (form.status === 'closed') return 'Closed';
-  return form.auto_open_on_event_completion ? 'Opens when event completes' : 'Draft';
+  return form.auto_open_on_event_completion ? 'Open now' : 'Draft';
 });
 const completionRateCopy = computed(() => `${submissions.value.length} response${submissions.value.length === 1 ? '' : 's'}`);
 const copyLinkLabel = computed(() => {
@@ -97,17 +97,22 @@ const canGenerateQuestions = computed(() => (
   && currentActivitySignature.value !== lastGeneratedActivitySignature.value
 ));
 const windowCopy = computed(() => {
-  if (form.status === 'active' && !feedbackWindow.value.closes_at) {
-    return 'Manual testing window';
+  if (form.status === 'closed') {
+    return 'Closed until you reopen it.';
   }
 
-  if (!feedbackWindow.value.opens_at || !feedbackWindow.value.closes_at) {
-    return 'Auto window is set by the event date.';
+  if (!feedbackWindow.value.opens_at && !feedbackWindow.value.closes_at) {
+    return form.auto_open_on_event_completion ? 'Always open until you close it.' : 'Not open yet.';
   }
 
-  const opens = new Date(feedbackWindow.value.opens_at).toLocaleDateString('en', { month: 'short', day: 'numeric' });
-  const closes = new Date(feedbackWindow.value.closes_at).toLocaleDateString('en', { month: 'short', day: 'numeric' });
-  return `${opens} to ${closes}`;
+  const parts: string[] = [];
+  if (feedbackWindow.value.opens_at) {
+    parts.push(`Opens ${new Date(feedbackWindow.value.opens_at).toLocaleDateString('en', { month: 'short', day: 'numeric' })}`);
+  }
+  if (feedbackWindow.value.closes_at) {
+    parts.push(`Closes ${new Date(feedbackWindow.value.closes_at).toLocaleDateString('en', { month: 'short', day: 'numeric' })}`);
+  }
+  return parts.join(' · ');
 });
 const publishedCampaign = computed(() => form.status === 'active' || form.status === 'closed');
 const responsesMode = computed(() => publishedCampaign.value || route.query.view === 'responses');
@@ -507,7 +512,7 @@ onBeforeUnmount(() => {
           <div>
             <p class="editorial-eyebrow">event feedback</p>
             <h1 class="editorial-title">{{ responsesMode ? 'Responses' : 'Feedback form' }}</h1>
-            <p class="editorial-subtitle">{{ responsesMode ? 'Read what attendees actually sent after the event, with the live form summary and each submission in one place.' : 'Shape the form people see after the event, then open it manually or let it unlock when the event is completed.' }}</p>
+            <p class="editorial-subtitle">{{ responsesMode ? 'Read what attendees actually sent, with the live form summary and each submission in one place.' : 'Shape the form people see, then either publish it manually or leave it open by default.' }}</p>
           </div>
           <div class="editorial-panel p-4">
             <p class="font-mono text-[11px] font-bold uppercase tracking-wide text-dc-gray">Status</p>
@@ -691,10 +696,10 @@ onBeforeUnmount(() => {
                 </label>
                 <AppDropdown v-model="form.status" label="Status" :options="statusOptions" />
                 <div class="block">
-                  <span class="editorial-label">Automation</span>
+                  <span class="editorial-label">Default access</span>
                   <label class="mt-2 flex min-h-[50px] items-center gap-3 rounded-md border-2 border-dc-border bg-dc-paper-warm px-4 py-3">
                     <input v-model="form.auto_open_on_event_completion" type="checkbox" class="size-5 shrink-0 accent-dc-pink" />
-                    <span class="min-w-0 text-sm font-bold leading-5 text-dc-ink">Auto-open after event, close after 3 days</span>
+                    <span class="min-w-0 text-sm font-bold leading-5 text-dc-ink">Keep this feedback form open immediately while it stays in draft</span>
                   </label>
                 </div>
               </div>

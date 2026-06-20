@@ -393,6 +393,12 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 - Updated admin navigation, auth redirects, event tabs, and admin back links to build URLs through the shared route helper.
 - Added a catch-all client route so old or unknown paths recover through the branded 404 instead of exposing an admin entry point.
 
+## 2026-06-20 — Always-open event feedback default
+
+- Removed the event-completion gate from event feedback so campaigns can exist and stay reachable before the event ends.
+- Updated the public feedback status and submission APIs to create campaigns for any event instead of waiting for completed status.
+- Reworded organizer feedback surfaces so they describe always-open draft access instead of an automatic completion window.
+
 ## 2026-06-20 — TV-safe feedback QR cleanup
 
 - Simplified the organizer feedback display route by removing the visible URL and campaign-settings actions from the live QR screen.

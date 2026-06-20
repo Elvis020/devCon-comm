@@ -51,8 +51,6 @@ const PAPER_QUIZ_MIN_TEXT_CHARS = 350;
 const PAPER_QUIZ_DEFAULT_QUESTION_COUNT = 5;
 const PAPER_QUIZ_MAX_QUESTION_COUNT = 8;
 const PAPER_QUIZ_GENERATION_NOTE = 'Prototype rule-based generation from extracted PDF text. Review and edit every question before going live.';
-const FEEDBACK_AUTO_OPEN_DAYS = 3;
-const FEEDBACK_AUTO_OPEN_MS = FEEDBACK_AUTO_OPEN_DAYS * 24 * 60 * 60 * 1000;
 const EVENT_FEEDBACK_TOKEN_MIN_CHARS = 20;
 const EVENT_FEEDBACK_TOKEN_MAX_CHARS = 160;
 const EVENT_FEEDBACK_COMMENT_MAX_CHARS = 1500;
@@ -459,28 +457,10 @@ function publicAppOrigin(c: Context): string {
   return envValue('PUBLIC_APP_URL', c) ?? envValue('PUBLIC_FRONTEND_ORIGIN', c) ?? new URL(c.req.url).origin;
 }
 
-function feedbackCampaignWindow(event: Event, campaign: FeedbackCampaign): { opens_at: string | null; closes_at: string | null } {
-  if (campaign.status === 'active') {
-    return {
-      opens_at: campaign.opens_at ?? null,
-      closes_at: campaign.closes_at ?? null,
-    };
-  }
-
-  const eventOpenDate = new Date(event.event_date);
-  const eventOpenMs = eventOpenDate.getTime();
-  const eventOpen = Number.isFinite(eventOpenMs) ? eventOpenDate : null;
-  const explicitOpen = campaign.opens_at ? new Date(campaign.opens_at) : null;
-  const validExplicitOpen = explicitOpen && Number.isFinite(explicitOpen.getTime()) ? explicitOpen : null;
-  const opensAt = validExplicitOpen ?? eventOpen;
-  const explicitClose = campaign.closes_at ? new Date(campaign.closes_at) : null;
-  const validExplicitClose = explicitClose && Number.isFinite(explicitClose.getTime()) ? explicitClose : null;
-  const autoClosesAt = eventOpen ? new Date(eventOpen.getTime() + FEEDBACK_AUTO_OPEN_MS) : null;
-  const closesAt = validExplicitClose ?? autoClosesAt;
-
+function feedbackCampaignWindow(_event: Event, campaign: FeedbackCampaign): { opens_at: string | null; closes_at: string | null } {
   return {
-    opens_at: opensAt?.toISOString() ?? null,
-    closes_at: closesAt?.toISOString() ?? null,
+    opens_at: campaign.opens_at ?? null,
+    closes_at: campaign.closes_at ?? null,
   };
 }
 
@@ -490,7 +470,7 @@ function isFeedbackCampaignOpen(event: Event, campaign: FeedbackCampaign): boole
   const afterOpen = !window.opens_at || new Date(window.opens_at).getTime() <= nowMs;
   const beforeClose = !window.closes_at || new Date(window.closes_at).getTime() >= nowMs;
   const statusOpen = campaign.status === 'active'
-    || (campaign.status === 'draft' && campaign.auto_open_on_event_completion && event.status === 'completed');
+    || (campaign.status === 'draft' && campaign.auto_open_on_event_completion);
 
   return statusOpen && afterOpen && beforeClose;
 }
@@ -1253,8 +1233,7 @@ app.get('/api/feedback/events/:eventId', async (c) => {
     return c.json({ error: 'Event not found' }, 404);
   }
 
-  const existingCampaign = await getFeedbackCampaignByEvent(eventId);
-  const campaign = existingCampaign ?? (event.status === 'completed' ? await getOrCreateFeedbackCampaign(eventId) : undefined);
+  const campaign = await getOrCreateFeedbackCampaign(eventId);
   const previewAllowed = previewRequested && !(await requireAdmin(c));
 
   if (!campaign || (!previewAllowed && !isFeedbackCampaignOpen(event, campaign))) {
@@ -1280,13 +1259,12 @@ app.get('/api/feedback/events/:eventId/status', async (c) => {
     return c.json({ available: false, error: 'Event not found' }, 404);
   }
 
-  const existingCampaign = await getFeedbackCampaignByEvent(eventId);
-  const campaign = existingCampaign ?? (event.status === 'completed' ? await getOrCreateFeedbackCampaign(eventId) : undefined);
-  const available = campaign ? isFeedbackCampaignOpen(event, campaign) : false;
+  const campaign = await getOrCreateFeedbackCampaign(eventId);
+  const available = isFeedbackCampaignOpen(event, campaign);
 
   return c.json({
     available,
-    feedback_window: campaign ? feedbackCampaignWindow(event, campaign) : null,
+    feedback_window: feedbackCampaignWindow(event, campaign),
     public_url: available ? `${publicAppOrigin(c)}/feedback/${eventId}` : null,
   });
 });
@@ -1299,8 +1277,7 @@ app.post('/api/feedback/events/:eventId/submissions', async (c) => {
     return c.json({ error: 'Event not found' }, 404);
   }
 
-  const existingCampaign = await getFeedbackCampaignByEvent(eventId);
-  const campaign = existingCampaign ?? (event.status === 'completed' ? await getOrCreateFeedbackCampaign(eventId) : undefined);
+  const campaign = await getOrCreateFeedbackCampaign(eventId);
 
   if (!campaign || !isFeedbackCampaignOpen(event, campaign)) {
     return c.json({ error: 'Feedback is not open for this event' }, 403);

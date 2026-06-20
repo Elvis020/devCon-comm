@@ -141,25 +141,30 @@ function formatDate(value: string): string {
 }
 
 function formatWindow(event: FeedbackMonthEvent): string {
-  if (!event.feedback_window.opens_at || !event.feedback_window.closes_at) {
-    return 'Window follows event completion';
+  if (!event.feedback_window.opens_at && !event.feedback_window.closes_at) {
+    return event.is_open ? 'Always open' : 'No schedule set';
   }
 
-  const opens = new Date(event.feedback_window.opens_at).toLocaleDateString('en', { month: 'short', day: 'numeric' });
-  const closes = new Date(event.feedback_window.closes_at).toLocaleDateString('en', { month: 'short', day: 'numeric' });
-  return `${opens} to ${closes}`;
+  const parts: string[] = [];
+  if (event.feedback_window.opens_at) {
+    parts.push(`Opens ${new Date(event.feedback_window.opens_at).toLocaleDateString('en', { month: 'short', day: 'numeric' })}`);
+  }
+  if (event.feedback_window.closes_at) {
+    parts.push(`Closes ${new Date(event.feedback_window.closes_at).toLocaleDateString('en', { month: 'short', day: 'numeric' })}`);
+  }
+  return parts.join(' · ');
 }
 
 function eventStatusLabel(event: FeedbackMonthEvent): string {
   if (event.is_open) return 'Open now';
-  if (!event.campaign_configured && event.event.status === 'completed') return 'Auto-ready';
+  if (!event.campaign_configured) return 'Ready';
   if (!event.campaign) return 'Not configured';
   return event.campaign.status.replace('_', ' ');
 }
 
 function statusClass(event: FeedbackMonthEvent): string {
   if (event.is_open) return 'border-dc-success bg-dc-success-soft text-dc-success';
-  if (!event.campaign_configured && event.event.status === 'completed') return 'border-dc-info bg-dc-info-soft text-dc-info';
+  if (!event.campaign_configured) return 'border-dc-info bg-dc-info-soft text-dc-info';
   if (event.campaign?.status === 'closed') return 'border-dc-border bg-dc-paper-warm text-dc-gray';
   return 'border-dc-ink bg-dc-yellow text-dc-ink';
 }
