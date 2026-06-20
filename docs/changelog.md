@@ -14,7 +14,8 @@ _Format: `## YYYY-MM-DD — [Feature / Fix / Refactor]` followed by bullet point
 ## 2026-06-20 — Monthly system design sessions
 
 - Added `System design` as a first-class program outline item type so monthly architecture scenarios can sit alongside talks, panels, workshops, and discussion slots.
-- Added an organizer System Design tab for each full event workflow, showing saved scenario rows from the program outline and linking back to the overview editor when no scenario has been added yet.
+- Added an organizer System Design tab for each full event workflow, letting organizers maintain the monthly scenario title, facilitator, public recap notes, and prompt link over time.
+- Exposed system design rows on public meetup and archive pages so people who missed the in-person event can still read what was discussed and open the original scenario prompt.
 - Added a checklist milestone for preparing the monthly system design scenario, with existing checklists backfilled when they are loaded.
 
 ## 2026-06-20 — Optional event program outlines

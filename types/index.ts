@@ -114,6 +114,7 @@ export interface PublicMeetupScheduleItem {
   title: string;
   type: 'networking' | 'talk' | 'panel' | 'workshop' | 'system_design' | 'open_discussion' | 'break';
   lead: string | null;
+  description?: string | null;
   resources: {
     title: string;
     url: string;

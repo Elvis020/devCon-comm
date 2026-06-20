@@ -60,6 +60,9 @@
   - APIs: `/api/events/[eventId]/feedback-campaign`, `DELETE /api/events/[eventId]/feedback-campaign`, `/api/feedback/events/[eventId]`, `/api/feedback/events/[eventId]/submissions`
   - Supabase persistence: `lib/supabase/feedback-campaigns.ts`
   - Mock DB fallback: `lib/mock-db/feedback.ts`
+- **Monthly system design**
+  - Active Vue pages: `src/views/admin/AdminSystemDesignView.vue`, `src/views/EventView.vue`, `src/views/ArchiveEventView.vue`
+  - Storage: `event.schedule` rows with type `system_design`, optional public recap notes, and prompt-link resources
 - **Attendance analysis**
   - Active Vue pages: `src/views/admin/AdminAttendanceOverviewView.vue`, `src/views/admin/AdminAttendanceView.vue`
   - APIs: `/api/attendance/monthly`, `/api/events/[eventId]/attendance`, `/api/events/[eventId]/attendance/import`, `DELETE /api/events/[eventId]/attendance`

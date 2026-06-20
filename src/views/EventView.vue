@@ -42,6 +42,7 @@ const loading = computed(() => meetupQuery.isPending.value);
 const error = computed(() => meetupQuery.error.value?.message ?? null);
 const imagePhotos = computed(() => (meetup.value?.photos ?? []).filter((photo) => !photo.type || photo.type === 'image'));
 const folderPhotos = computed(() => (meetup.value?.photos ?? []).filter((photo) => photo.type === 'folder'));
+const systemDesignItems = computed(() => (meetup.value?.schedule ?? []).filter((item) => item.type === 'system_design'));
 const stackedImagePhotos = computed(() => {
   const photos = imagePhotos.value;
   if (photos.length === 0) return [];
@@ -398,6 +399,43 @@ const meetupPrimaryAction = computed(() => (meetup.value ? primaryAction(meetup.
               </div>
             </li>
           </ol>
+        </section>
+
+        <section v-if="systemDesignItems.length > 0" class="mt-12">
+          <div class="mb-5">
+            <p class="editorial-eyebrow">system design</p>
+            <h2 class="mt-2 text-3xl font-black tracking-tight text-dc-ink">Monthly architecture scenario</h2>
+          </div>
+
+          <div class="grid gap-4">
+            <article
+              v-for="item in systemDesignItems"
+              :key="`${item.time}-${item.title}`"
+              class="rounded-lg border-2 border-dc-ink bg-dc-paper p-5 shadow-[3px_3px_0_#111111] sm:p-6"
+            >
+              <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+                <div>
+                  <p class="font-mono text-xs font-bold uppercase tracking-wide text-dc-gray">{{ item.time }}</p>
+                  <h3 class="mt-2 text-2xl font-black tracking-tight text-dc-ink">{{ item.title }}</h3>
+                  <p v-if="item.lead" class="mt-2 text-sm font-semibold text-dc-gray">
+                    Led by {{ item.lead }}
+                  </p>
+                </div>
+                <a
+                  v-if="item.resources[0]"
+                  :href="item.resources[0].url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="editorial-secondary-action whitespace-nowrap"
+                >
+                  {{ item.resources[0].title || 'View prompt' }} &rarr;
+                </a>
+              </div>
+              <p v-if="item.description" class="mt-5 max-w-4xl whitespace-pre-line text-base leading-8 text-dc-gray">
+                {{ item.description }}
+              </p>
+            </article>
+          </div>
         </section>
 
         <section v-if="imagePhotos.length > 0 || folderPhotos.length > 0" class="mt-12">

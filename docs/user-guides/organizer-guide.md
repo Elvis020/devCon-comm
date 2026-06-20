@@ -18,7 +18,7 @@ Use the event list to create, edit, publish, and remove meetups. If a Luma impor
 
 Event outlines are optional. When a meetup has a known run of show, add time/title/type/lead rows on the event overview; otherwise leave the outline empty and continue with the event checklist, talks, attendance, and feedback flows. Organizers can paste a plain text program outline and let the editor split it into rows before saving or publishing.
 
-Use the `System design` outline type for the monthly architecture scenario. The System Design tab reads from those outline rows, so the scenario title, time, and facilitator stay in one place.
+Use the `System design` outline type for the monthly architecture scenario. The System Design tab reads from those outline rows and lets organizers keep the public prompt link and recap notes updated after the event.
 
 ## Follow the Event Checklist
 
@@ -56,4 +56,4 @@ The Quiz section supports building questions and hosting a live quiz. Quiz is cu
 
 ## Prepare System Design Sessions
 
-The System Design tab is the monthly scenario workspace. Add the scenario as a `System design` row in the event overview's program outline, then use the tab to confirm the title, slot, and expert lead before the event.
+The System Design tab is the monthly scenario workspace. Add the scenario as a `System design` row in the event overview's program outline, then use the tab to publish the prompt link and short recap notes. Public meetup and archive pages show this section when the event has system design details.

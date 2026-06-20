@@ -117,6 +117,7 @@ function createOutlineDraft(item?: Partial<PublicMeetupScheduleItem>): PublicMee
     title: item?.title ?? '',
     type: item?.type ?? 'talk',
     lead: item?.lead ?? null,
+    description: item?.description ?? null,
     resources: item?.resources ?? [],
   };
 }
@@ -389,7 +390,8 @@ function normalizeOutlineDrafts(): PublicMeetupScheduleItem[] {
       title,
       type: item.type,
       lead: lead || null,
-      resources: [],
+      description: item.description?.trim() || null,
+      resources: item.resources ?? [],
     });
   }
 

@@ -381,6 +381,7 @@ function normalizeSchedule(value: Json[]): PublicMeetupScheduleItem[] {
       title: stringValue(item.title, 'Untitled session'),
       type: scheduleType(item.type),
       lead: typeof item.lead === 'string' ? item.lead : null,
+      description: typeof item.description === 'string' ? item.description : null,
       resources: Array.isArray(item.resources)
         ? item.resources.filter(isRecord).map((resource) => ({
           title: stringValue(resource.title, 'Resource'),

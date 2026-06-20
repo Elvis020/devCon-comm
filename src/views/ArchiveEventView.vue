@@ -13,6 +13,7 @@ const feedbackAvailable = ref(false);
 const feedbackClosesAt = ref<string | null>(null);
 
 const publishedTalks = computed(() => talks.value.filter((talk) => talk.status === 'published'));
+const systemDesignItems = computed(() => (event.value?.schedule ?? []).filter((item) => item.type === 'system_design'));
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat('en', {
@@ -102,6 +103,47 @@ onMounted(async () => {
             </RouterLink>
           </div>
         </header>
+
+        <section v-if="systemDesignItems.length > 0" class="mb-12">
+          <div class="archive-event-section-header mb-5 flex items-end justify-between gap-4">
+            <div>
+              <p class="editorial-eyebrow mb-2">system design</p>
+              <h2 class="archive-event-section-title text-2xl font-black tracking-tight text-dc-ink">
+                Monthly Architecture Scenario
+              </h2>
+            </div>
+          </div>
+
+          <div class="grid gap-4">
+            <article
+              v-for="item in systemDesignItems"
+              :key="`${item.time}-${item.title}`"
+              class="rounded-lg border-2 border-dc-ink bg-dc-paper p-5 shadow-[3px_3px_0_#111111] sm:p-6"
+            >
+              <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+                <div>
+                  <p class="font-mono text-xs font-bold uppercase tracking-wide text-dc-gray">{{ item.time }}</p>
+                  <h3 class="mt-2 text-2xl font-black tracking-tight text-dc-ink">{{ item.title }}</h3>
+                  <p v-if="item.lead" class="mt-2 text-sm font-semibold text-dc-gray">
+                    Led by {{ item.lead }}
+                  </p>
+                </div>
+                <a
+                  v-if="item.resources[0]"
+                  :href="item.resources[0].url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="editorial-secondary-action whitespace-nowrap"
+                >
+                  {{ item.resources[0].title || 'View prompt' }} &rarr;
+                </a>
+              </div>
+              <p v-if="item.description" class="mt-5 max-w-4xl whitespace-pre-line text-base leading-8 text-dc-gray">
+                {{ item.description }}
+              </p>
+            </article>
+          </div>
+        </section>
 
         <div class="archive-event-section-header mb-5 flex items-end justify-between gap-4">
           <div>
